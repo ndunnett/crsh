@@ -1,48 +1,44 @@
+use libc::{EXIT_FAILURE, WUNTRACED};
 use std::ffi::CString;
 
-pub enum ForkResult {
-    Child,
-    Parent(i32),
-}
+fn _execute(args: &[&str], status: &mut i32) {
+    match unsafe { libc::fork() } {
+        -1 => {
+            *status = -1;
+        }
+        0 => {
+            let c_strings = args
+                .iter()
+                .map(|&arg| CString::new(arg).unwrap())
+                .collect::<Vec<_>>();
 
-pub fn fork() -> Result<ForkResult, String> {
-    let result = unsafe { libc::fork() };
+            let argv = c_strings
+                .iter()
+                .map(|arg| arg.as_ptr())
+                .chain([std::ptr::null()])
+                .collect::<Vec<_>>();
 
-    match result {
-        -1 => Err("failed to fork process".to_string()),
-        0 => Ok(ForkResult::Child),
-        _ => Ok(ForkResult::Parent(result)),
+            unsafe {
+                if libc::execvp(argv[0], argv.as_ptr()) == -1 {
+                    *status = -1;
+                }
+
+                libc::exit(EXIT_FAILURE);
+            };
+        }
+        pid => unsafe {
+            libc::waitpid(pid, status, WUNTRACED);
+        },
     }
 }
 
-pub fn execvp(command: &str, args: &[&str]) -> Result<(), String> {
-    let file = CString::new(command).unwrap();
-    let c_args = args
-        .iter()
-        .map(|&arg| CString::new(arg).unwrap())
-        .collect::<Vec<_>>();
+pub fn execute(args: &[&str]) -> Result<(), String> {
+    let mut status = 0;
+    _execute(args, &mut status);
 
-    let mut argv = vec![file.as_ptr()];
-    argv.extend(c_args.iter().map(|arg| arg.as_ptr()));
-    argv.push(std::ptr::null());
-
-    let result = unsafe { libc::execvp(file.as_ptr(), argv.as_ptr()) };
-
-    // todo: proper error handling
-    if result == -1 {
-        Err("failed to execute".to_string())
-    } else {
-        Ok(())
+    match status {
+        0 => Ok(()),
+        256 => Err(format!("failed to find \"{}\"", args[0])),
+        _ => Err(format!("exit code {}", status)),
     }
-}
-
-pub fn waitpid(pid: i32) -> Result<(), String> {
-    // todo: proper error handling
-    let mut status: libc::c_int = 0;
-
-    unsafe {
-        libc::waitpid(pid, &mut status, 0);
-    }
-
-    Ok(())
 }
