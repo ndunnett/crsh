@@ -5,21 +5,15 @@ use crate::builtin::*;
 use crate::system::dirs;
 use crate::system::process;
 
-#[derive(PartialEq)]
-enum LastStatus {
-    Success,
-    Error,
-}
-
 struct Shell {
-    last_status: LastStatus,
+    last_result: Result<(), String>,
     should_exit: bool,
 }
 
 impl Shell {
     fn new() -> Self {
         Self {
-            last_status: LastStatus::Success,
+            last_result: Ok(()),
             should_exit: false,
         }
     }
@@ -39,7 +33,7 @@ impl Shell {
             }
         }
 
-        let prompt_colour = if self.last_status == LastStatus::Success {
+        let prompt_colour = if self.last_result.is_ok() {
             "\x1b[32m"
         } else {
             "\x1b[31m"
@@ -53,13 +47,18 @@ impl Shell {
         while !self.should_exit {
             self.print_prefix();
             let mut input = String::new();
-            stdin().read_line(&mut input).unwrap();
 
-            if let Err(e) = self.interpret(&input) {
-                self.last_status = LastStatus::Error;
+            match stdin().read_line(&mut input) {
+                Ok(0) => {
+                    println!();
+                    break;
+                }
+                Ok(_) => self.last_result = self.interpret(&input),
+                Err(e) => self.last_result = Err(e.to_string()),
+            }
+
+            if let Err(e) = self.last_result.as_ref() {
                 eprintln!("error: {}", e);
-            } else {
-                self.last_status = LastStatus::Success;
             }
         }
     }
