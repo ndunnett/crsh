@@ -16,7 +16,7 @@ RUN set -eux; \
 ARG USERNAME=dev
 RUN set -eux; \
     useradd --create-home --user-group --no-log-init "$USERNAME"; \
-    mkdir -p "/home/$USERNAME/rsh"; \
+    mkdir -p "/home/$USERNAME/rash"; \
     chown -R "$USERNAME:$USERNAME" "/home/$USERNAME"
 USER "$USERNAME"
 

@@ -1,8 +1,8 @@
 version: "3.9"
 
 services:
-  rsh-dev:
+  rash-dev:
     build:
       context: .
     volumes:
-      - ..:/home/dev/rsh
+      - ..:/home/dev/rash

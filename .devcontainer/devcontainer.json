@@ -1,7 +1,7 @@
 {
 	"dockerComposeFile": "./docker-compose.yml",
-	"service": "rsh-dev",
-	"workspaceFolder": "/home/dev/rsh",
+	"service": "rash-dev",
+	"workspaceFolder": "/home/dev/rash",
 	"customizations": {
 		"vscode": {
 			"extensions": [
