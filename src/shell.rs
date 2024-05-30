@@ -1,51 +1,25 @@
 use std::env;
 use std::io::{self, Write};
-use std::str::FromStr;
 
-use crate::builtin::*;
+use crate::call::Call;
 use crate::system::dirs;
 
-struct Shell {
+pub struct Shell {
     last_result: Result<(), String>,
     should_exit: bool,
 }
 
 impl Shell {
-    fn new() -> Self {
+    pub fn new() -> Self {
         Self {
             last_result: Ok(()),
             should_exit: false,
         }
     }
 
-    fn print_prefix(&self) {
-        if let Ok(pwd) = env::current_dir() {
-            if let Some(dir) = pwd.as_os_str().to_str() {
-                let home = dirs::home();
-                print!(
-                    "\x1b[2m{}\x1b[m ",
-                    if dir.starts_with(&home) {
-                        dir.replacen(&home, "~", 1)
-                    } else {
-                        dir.into()
-                    }
-                );
-            }
-        }
-
-        let prompt_colour = if self.last_result.is_ok() {
-            "\x1b[32m"
-        } else {
-            "\x1b[31m"
-        };
-
-        print!("\x1b[1m{}$\x1b[m ", prompt_colour);
-        io::stdout().flush().unwrap();
-    }
-
-    fn main_loop(&mut self) {
+    pub fn main_loop(&mut self) {
         while !self.should_exit {
-            self.print_prefix();
+            self.print_prompt();
             let mut input = String::new();
 
             match io::stdin().read_line(&mut input) {
@@ -64,31 +38,53 @@ impl Shell {
     }
 
     fn interpret(&mut self, input: &str) -> Result<(), String> {
-        let commands = input.trim().split(" | ");
+        let parts = input.trim().split(" | ");
 
-        for command in commands {
-            let args = command.split_whitespace().collect::<Vec<_>>();
-
-            if args.is_empty() {
+        for part in parts {
+            if part.is_empty() {
                 continue;
             }
 
-            match Builtin::from_str(args[0]) {
-                Ok(Builtin::Exit) => {
-                    self.should_exit = true;
-                    return Ok(());
-                }
-                Ok(builtin) => Command::new(builtin, &args[1..]),
-                Err(_) => Command::new(Builtin::Exec, &args),
+            let call = Call::parse(part);
+
+            if call == Call::Exit {
+                self.should_exit = true;
+                return Ok(());
+            } else {
+                call.execute()?;
             }
-            .execute()?;
         }
 
         Ok(())
     }
-}
 
-pub fn run() {
-    let mut shell = Shell::new();
-    shell.main_loop()
+    fn print_prompt(&self) {
+        let pwd_buf = env::current_dir().unwrap_or_default();
+        let pwd = pwd_buf.as_os_str().to_str().unwrap_or_default();
+        let home = dirs::home();
+
+        let path = if pwd.starts_with(&home) {
+            pwd.replacen(&home, "~", 1)
+        } else {
+            pwd.into()
+        };
+
+        const PATH_DECORATION: &str = "\x1b[2m";
+        const PROMPT_DECORATION: &str = "\x1b[1m";
+        const COLOUR_SUCCESS: &str = "\x1b[32m";
+        const COLOUR_FAIL: &str = "\x1b[31m";
+        const PROMPT: &str = "$";
+
+        let prompt_colour = if self.last_result.is_ok() {
+            COLOUR_SUCCESS
+        } else {
+            COLOUR_FAIL
+        };
+
+        print!(
+            "{}{}\x1b[m {}{}{}\x1b[m ",
+            PATH_DECORATION, path, PROMPT_DECORATION, prompt_colour, PROMPT
+        );
+        io::stdout().flush().unwrap();
+    }
 }
