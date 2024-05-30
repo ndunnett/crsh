@@ -1,9 +1,9 @@
 use std::env;
-use std::io::{stdin, stdout, Write};
+use std::io::{self, Write};
+use std::str::FromStr;
 
 use crate::builtin::*;
 use crate::system::dirs;
-use crate::system::process;
 
 struct Shell {
     last_result: Result<(), String>,
@@ -27,7 +27,7 @@ impl Shell {
                     if dir.starts_with(&home) {
                         dir.replacen(&home, "~", 1)
                     } else {
-                        dir.to_string()
+                        dir.into()
                     }
                 );
             }
@@ -40,7 +40,7 @@ impl Shell {
         };
 
         print!("\x1b[1m{}$\x1b[m ", prompt_colour);
-        stdout().flush().unwrap();
+        io::stdout().flush().unwrap();
     }
 
     fn main_loop(&mut self) {
@@ -48,7 +48,7 @@ impl Shell {
             self.print_prefix();
             let mut input = String::new();
 
-            match stdin().read_line(&mut input) {
+            match io::stdin().read_line(&mut input) {
                 Ok(0) => {
                     println!();
                     break;
@@ -64,17 +64,27 @@ impl Shell {
     }
 
     fn interpret(&mut self, input: &str) -> Result<(), String> {
-        let args = input.split_whitespace().collect::<Vec<_>>();
+        let commands = input.trim().split(" | ");
 
-        match args.first() {
-            Some(&"exit") => {
-                self.should_exit = true;
-                Ok(())
+        for command in commands {
+            let args = command.split_whitespace().collect::<Vec<_>>();
+
+            if args.is_empty() {
+                continue;
             }
-            Some(&"cd") => cd(&args[1..]),
-            Some(_) => process::execute(&args),
-            None => Ok(()),
+
+            match Builtin::from_str(args[0]) {
+                Ok(Builtin::Exit) => {
+                    self.should_exit = true;
+                    return Ok(());
+                }
+                Ok(builtin) => Command::new(builtin, &args[1..]),
+                Err(_) => Command::new(Builtin::Exec, &args),
+            }
+            .execute()?;
         }
+
+        Ok(())
     }
 }
 
