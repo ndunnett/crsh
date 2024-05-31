@@ -1,11 +1,11 @@
 use std::env;
 use std::io::{self, Write};
 
-use crate::call::Call;
+use crate::builtin::Call;
 use crate::system::dirs;
 
 pub struct Shell {
-    last_result: Result<(), String>,
+    last_result: Result<(), ()>,
     should_exit: bool,
 }
 
@@ -28,34 +28,22 @@ impl Shell {
                     break;
                 }
                 Ok(_) => self.last_result = self.interpret(&input),
-                Err(e) => self.last_result = Err(e.to_string()),
-            }
-
-            if let Err(e) = self.last_result.as_ref() {
-                eprintln!("error: {}", e);
+                Err(e) => {
+                    self.last_result = Err(());
+                    eprintln!("{}", e);
+                }
             }
         }
     }
 
-    fn interpret(&mut self, input: &str) -> Result<(), String> {
-        let parts = input.trim().split(" | ");
-
-        for part in parts {
-            if part.is_empty() {
-                continue;
-            }
-
-            let call = Call::parse(part);
-
-            if call == Call::Exit {
+    fn interpret(&mut self, input: &str) -> Result<(), ()> {
+        match Call::parse(input) {
+            Call::Exit => {
                 self.should_exit = true;
-                return Ok(());
-            } else {
-                call.execute()?;
+                Ok(())
             }
+            call => call.execute(),
         }
-
-        Ok(())
     }
 
     fn print_prompt(&self) {
@@ -85,6 +73,7 @@ impl Shell {
             "{}{}\x1b[m {}{}{}\x1b[m ",
             PATH_DECORATION, path, PROMPT_DECORATION, prompt_colour, PROMPT
         );
+
         io::stdout().flush().unwrap();
     }
 }
