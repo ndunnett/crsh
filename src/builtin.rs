@@ -12,11 +12,18 @@ use pwd::Pwd;
 use type_::Type;
 use which::Which;
 
-use crate::interpreter::Executable;
+use crate::interpreter::ExecutionContext;
 
-type BuiltinOption = Option<Box<dyn Fn(&[&str]) -> Box<dyn Executable>>>;
+pub trait Builtin {
+    fn build(args: &[&str]) -> Result<Box<dyn Builtin>, String>
+    where
+        Self: Sized;
+    fn run(&self, ctx: ExecutionContext) -> Result<(), ()>;
+}
 
-pub fn get(keyword: &str) -> BuiltinOption {
+type BuilderOption = Option<Box<dyn Fn(&[&str]) -> Result<Box<dyn Builtin>, String>>>;
+
+pub fn get_builder(keyword: &str) -> BuilderOption {
     match keyword {
         "cd" => Some(Box::new(Cd::build)),
         "echo" => Some(Box::new(Echo::build)),
@@ -25,13 +32,5 @@ pub fn get(keyword: &str) -> BuiltinOption {
         "type" => Some(Box::new(Type::build)),
         "which" => Some(Box::new(Which::build)),
         _ => None,
-    }
-}
-
-pub fn build(keyword: &str, args: &[&str]) -> Option<Box<dyn Executable>> {
-    if let Some(builder) = get(keyword) {
-        Some(builder(args))
-    } else {
-        None
     }
 }

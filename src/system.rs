@@ -1,11 +1,38 @@
 use std::env;
 use std::ffi::OsString;
 use std::path::{Path, PathBuf};
+use std::process::Command;
 
 pub mod io;
-mod launch;
 
-pub use launch::Launch;
+use crate::interpreter::ExecutionContext;
+
+pub fn launch(keyword: &str, args: Vec<&str>, ctx: ExecutionContext) -> Result<(), ()> {
+    let args = args.iter().map(|s| s.to_string()).collect::<Vec<_>>();
+
+    match Command::new(keyword)
+        .stdin(ctx.input)
+        .stdout(ctx.output)
+        .stderr(ctx.error)
+        .args(&args)
+        .spawn()
+    {
+        Ok(mut c) => match c.wait() {
+            Ok(status) => {
+                if status.success() {
+                    Ok(())
+                } else {
+                    Err(())
+                }
+            }
+            Err(_) => Err(()),
+        },
+        Err(e) => {
+            eprintln!("crsh: {}", e);
+            Err(())
+        }
+    }
+}
 
 pub fn find_on_path<P>(keyword: P) -> Option<PathBuf>
 where

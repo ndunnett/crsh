@@ -1,23 +1,22 @@
 use std::process::exit;
 
-use crate::interpreter::{Executable, ExecutionContext};
+use crate::builtin::Builtin;
+use crate::interpreter::ExecutionContext;
 
 pub struct Exit {
     code: i32,
 }
 
-impl Exit {
-    pub fn build(args: &[&str]) -> Box<dyn Executable> {
+impl Builtin for Exit {
+    fn build(args: &[&str]) -> Result<Box<dyn Builtin>, String> {
         let code = args
             .first()
             .map(|arg| arg.parse::<i32>().unwrap_or(0))
             .unwrap_or(0);
 
-        Box::new(Self { code })
+        Ok(Box::new(Self { code }))
     }
-}
 
-impl Executable for Exit {
     fn run(&self, _ctx: ExecutionContext) -> Result<(), ()> {
         exit(self.code)
     }

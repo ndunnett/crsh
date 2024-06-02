@@ -2,7 +2,8 @@ use std::env;
 use std::io::Write;
 use std::path::Path;
 
-use crate::interpreter::{Executable, ExecutionContext};
+use crate::builtin::Builtin;
+use crate::interpreter::ExecutionContext;
 use crate::system;
 
 enum CdOption {
@@ -10,7 +11,6 @@ enum CdOption {
     P,
     Back,
     None,
-    Bad(String),
 }
 
 pub struct Cd {
@@ -18,8 +18,8 @@ pub struct Cd {
     path: Option<String>,
 }
 
-impl Cd {
-    pub fn build(args: &[&str]) -> Box<dyn Executable> {
+impl Builtin for Cd {
+    fn build(args: &[&str]) -> Result<Box<dyn Builtin>, String> {
         let mut option = CdOption::None;
         let mut path = None;
 
@@ -36,20 +36,18 @@ impl Cd {
                 match args.first() {
                     Some(&"-L") => option = CdOption::L,
                     Some(&"-P") => option = CdOption::P,
-                    Some(&arg) => option = CdOption::Bad(format!("bad argument: {}", arg)),
+                    Some(&arg) => return Err(format!("cd: bad argument: {}\n", arg)),
                     None => {}
                 };
 
                 path = Some(args[1].to_string());
             }
-            _ => option = CdOption::Bad("too many arguments".to_string()),
+            _ => return Err("cd: too many arguments\n".to_string()),
         }
 
-        Box::new(Self { option, path })
+        Ok(Box::new(Self { option, path }))
     }
-}
 
-impl Executable for Cd {
     fn run(&self, mut ctx: ExecutionContext) -> Result<(), ()> {
         let path = match (&self.path, &self.option) {
             (None, CdOption::Back) => {
@@ -62,11 +60,6 @@ impl Executable for Cd {
                 }
             }
             (None, _) => system::home(),
-            (_, CdOption::Bad(arg)) => {
-                let msg = format!("cd: {arg}\n");
-                let _ = ctx.error.write_all(msg.as_bytes());
-                return Err(());
-            }
             // -L and -P options not yet implemented
             // todo: https://pubs.opengroup.org/onlinepubs/9699919799/utilities/cd.html
             (Some(s), _) => {
@@ -79,7 +72,7 @@ impl Executable for Cd {
         };
 
         if !Path::new(&path).is_dir() {
-            let msg = format!("cd: {}: no such file or directory\n", path);
+            let msg = format!("cd: cannot access '{path}': No such file or directory\n");
             let _ = ctx.error.write_all(msg.as_bytes());
             Err(())
         } else {
@@ -88,7 +81,7 @@ impl Executable for Cd {
             }
 
             if let Err(e) = env::set_current_dir(&path) {
-                let msg = format!("cd: {e}\n");
+                let msg = format!("cd: cannot access '{path}': {e}\n");
                 let _ = ctx.error.write_all(msg.as_bytes());
                 Err(())
             } else {

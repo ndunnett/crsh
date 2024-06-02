@@ -1,12 +1,11 @@
 mod builtin;
 mod interpreter;
 mod prompt;
-mod shell;
 mod system;
 
-use crate::shell::Shell;
+use crate::prompt::Prompt;
 
 fn main() {
-    let mut shell = Shell::new();
-    shell.interactive_loop()
+    let mut prompt = Prompt::new();
+    prompt.interactive_loop()
 }
