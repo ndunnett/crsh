@@ -1,79 +1,64 @@
-use std::env;
-use std::io::{self, Write};
+use std::io;
+use std::process::exit;
 
-use crate::builtin::Call;
-use crate::system::dirs;
+use crate::interpreter::Interpreter;
+use crate::prompt::Prompt;
 
-pub struct Shell {
+pub struct Shell<'a> {
+    prompt: Prompt<'a>,
+    interpreter: Interpreter,
     last_result: Result<(), ()>,
-    should_exit: bool,
 }
 
-impl Shell {
+impl<'a> Shell<'a> {
     pub fn new() -> Self {
         Self {
+            prompt: Prompt::new(),
+            interpreter: Interpreter::new(),
             last_result: Ok(()),
-            should_exit: false,
         }
     }
 
-    pub fn main_loop(&mut self) {
-        while !self.should_exit {
-            self.print_prompt();
-            let mut input = String::new();
+    pub fn interactive_loop(&mut self) {
+        loop {
+            self.prompt.print(self.last_result);
+            self.last_result = match self.read_input() {
+                Ok(input) => self.interpreter.execute(&input),
+                Err(e) => {
+                    eprintln!("crsh: {e}");
+                    Err(())
+                }
+            };
+        }
+    }
 
+    fn read_input(&self) -> Result<String, String> {
+        let mut input = String::new();
+
+        loop {
             match io::stdin().read_line(&mut input) {
                 Ok(0) => {
                     println!();
-                    break;
+                    exit(0);
                 }
-                Ok(_) => self.last_result = self.interpret(&input),
+                Ok(_) => {
+                    if input.trim_end().ends_with('\\') {
+                        input = input
+                            .trim_end()
+                            .strip_suffix('\\')
+                            .unwrap_or(&input)
+                            .to_string();
+
+                        self.prompt.print_continuation();
+                        continue;
+                    } else {
+                        return Ok(input);
+                    }
+                }
                 Err(e) => {
-                    self.last_result = Err(());
-                    eprintln!("{}", e);
+                    return Err(e.to_string());
                 }
             }
         }
-    }
-
-    fn interpret(&mut self, input: &str) -> Result<(), ()> {
-        match Call::parse(input) {
-            Call::Exit => {
-                self.should_exit = true;
-                Ok(())
-            }
-            call => call.execute(),
-        }
-    }
-
-    fn print_prompt(&self) {
-        let pwd_buf = env::current_dir().unwrap_or_default();
-        let pwd = pwd_buf.as_os_str().to_str().unwrap_or_default();
-        let home = dirs::home();
-
-        let path = if pwd.starts_with(&home) {
-            pwd.replacen(&home, "~", 1)
-        } else {
-            pwd.into()
-        };
-
-        const PATH_DECORATION: &str = "\x1b[2m";
-        const PROMPT_DECORATION: &str = "\x1b[1m";
-        const COLOUR_SUCCESS: &str = "\x1b[32m";
-        const COLOUR_FAIL: &str = "\x1b[31m";
-        const PROMPT: &str = "$";
-
-        let prompt_colour = if self.last_result.is_ok() {
-            COLOUR_SUCCESS
-        } else {
-            COLOUR_FAIL
-        };
-
-        print!(
-            "{}{}\x1b[m {}{}{}\x1b[m ",
-            PATH_DECORATION, path, PROMPT_DECORATION, prompt_colour, PROMPT
-        );
-
-        io::stdout().flush().unwrap();
     }
 }

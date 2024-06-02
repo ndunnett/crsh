@@ -1,8 +1,0 @@
-version: "3.9"
-
-services:
-  rash-dev:
-    build:
-      context: .
-    volumes:
-      - ..:/home/dev/rash
