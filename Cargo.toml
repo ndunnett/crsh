@@ -1,7 +1,11 @@
 [package]
-name = "rash"
+name = "crsh"
 version = "0.1.0"
 edition = "2021"
+readme = "README.md"
+repository = "https://github.com/ndunnett/crsh"
+license-file = "LICENSE"
 
-# [dependencies]
-# crossterm = "0.27"
+[dependencies]
+crossterm = "0.27"
+strip-ansi-escapes = "0.2.0"

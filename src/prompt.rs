@@ -1,28 +1,30 @@
+use std::cmp::Ordering;
 use std::env;
-use std::io::{self, Write};
-use std::process::exit;
+use std::io::{self, Stdout, Write};
+use std::time::Duration;
+
+use crossterm::event::{self, KeyCode, KeyModifiers};
+use crossterm::{cursor, terminal, QueueableCommand};
 
 use crate::interpreter;
 use crate::system;
 
 struct PromptStyle<'a> {
     path_decoration: &'a str,
-    prompt_decoration: &'a str,
+    symbol_decoration: &'a str,
     colour_success: &'a str,
     colour_fail: &'a str,
-    regular_prompt: &'a str,
-    continue_prompt: &'a str,
+    symbol: &'a str,
 }
 
 impl Default for PromptStyle<'_> {
     fn default() -> Self {
         Self {
             path_decoration: "\x1b[2m",
-            prompt_decoration: "\x1b[1m",
+            symbol_decoration: "\x1b[1m",
             colour_success: "\x1b[32m",
             colour_fail: "\x1b[31m",
-            regular_prompt: "$",
-            continue_prompt: ">",
+            symbol: "$",
         }
     }
 }
@@ -30,6 +32,8 @@ impl Default for PromptStyle<'_> {
 struct PromptContext {
     current_path: String,
     last_result: Result<(), ()>,
+    history: Vec<Vec<char>>,
+    stdout: Stdout,
 }
 
 impl Default for PromptContext {
@@ -37,6 +41,8 @@ impl Default for PromptContext {
         Self {
             current_path: Self::get_path(),
             last_result: Ok(()),
+            history: Vec::new(),
+            stdout: io::stdout(),
         }
     }
 }
@@ -59,6 +65,13 @@ impl PromptContext {
     }
 }
 
+enum PromptCapture {
+    String(String),
+    Kill,
+    End,
+    Suspend,
+}
+
 #[derive(Default)]
 pub struct Prompt<'a> {
     style: PromptStyle<'a>,
@@ -70,75 +83,210 @@ impl<'a> Prompt<'a> {
         Self::default()
     }
 
-    pub fn interactive_loop(&mut self) {
-        self.ctx.last_result = Ok(());
-
+    pub fn interactive_loop(&mut self) -> Result<(), ()> {
         loop {
-            self.ctx.update_path();
-            self.print_ps1();
-            let mut input = String::new();
-            let read_status;
-
-            loop {
-                match io::stdin().read_line(&mut input) {
-                    Ok(0) => {
-                        println!();
-                        exit(0);
-                    }
-                    Ok(_) => {
-                        if input.trim_end().ends_with('\\') {
-                            input = input
-                                .trim_end()
-                                .strip_suffix('\\')
-                                .unwrap_or(&input)
-                                .to_string();
-
-                            self.print_ps2();
-                            continue;
-                        } else {
-                            read_status = Ok(());
-                            break;
-                        }
-                    }
-                    Err(e) => {
-                        read_status = Err(e.to_string());
-                        break;
-                    }
+            match self.prompt() {
+                Ok(PromptCapture::String(input)) => {
+                    self.ctx.last_result = interpreter::execute(&input);
                 }
-            }
-
-            self.ctx.last_result = match read_status {
-                Ok(_) => interpreter::execute(&input),
+                Ok(PromptCapture::Kill) => {
+                    // todo: ctrl-c unimplemented
+                    continue;
+                }
+                Ok(PromptCapture::End) => {
+                    break;
+                }
+                Ok(PromptCapture::Suspend) => {
+                    // todo: ctrl-z unimplemented
+                    continue;
+                }
                 Err(e) => {
                     eprintln!("crsh: {e}");
-                    Err(())
+                    self.ctx.last_result = Err(());
                 }
-            };
+            }
         }
+
+        Ok(())
     }
 
-    pub fn print_ps1(&self) {
-        print!(
+    fn prompt(&mut self) -> Result<PromptCapture, io::Error> {
+        terminal::enable_raw_mode()?;
+        self.ctx.stdout.queue(terminal::EnableLineWrap)?;
+        self.ctx.update_path();
+        let mut buffer: Vec<char> = Vec::new();
+        let mut cursor_index: usize = 0;
+        let mut history_offset: usize = 0;
+        let mut output_rows = 0;
+        let mut taken_rows = output_rows;
+        let mut last_output_rows = output_rows;
+
+        loop {
+            let (cols, rows) = terminal::size()?;
+
+            if rows > 0 {
+                let ps1 = self.ps1();
+                let buffer_string = buffer.iter().collect::<String>();
+                let output = format!("{ps1}{buffer_string}");
+
+                output_rows = (strip_ansi_escapes::strip_str(&output)
+                    .len()
+                    .div_ceil(cols as usize)
+                    - 1) as u16;
+
+                match last_output_rows.cmp(&output_rows) {
+                    Ordering::Less => {
+                        if output_rows > taken_rows {
+                            taken_rows = output_rows;
+                            self.ctx
+                                .stdout
+                                .queue(terminal::ScrollUp(output_rows - last_output_rows))?;
+                        } else {
+                            self.ctx
+                                .stdout
+                                .queue(cursor::MoveToNextLine(output_rows - last_output_rows))?;
+                        }
+
+                        last_output_rows = output_rows;
+                    }
+                    Ordering::Greater => {
+                        self.ctx
+                            .stdout
+                            .queue(cursor::MoveToPreviousLine(last_output_rows - output_rows))?;
+
+                        last_output_rows = output_rows;
+                    }
+                    Ordering::Equal => {}
+                }
+
+                if output_rows > 0 {
+                    self.ctx
+                        .stdout
+                        .queue(cursor::MoveToPreviousLine(output_rows))?;
+                } else {
+                    self.ctx.stdout.queue(cursor::MoveToColumn(0))?;
+                }
+
+                self.ctx
+                    .stdout
+                    .queue(terminal::Clear(terminal::ClearType::CurrentLine))?;
+                self.ctx
+                    .stdout
+                    .queue(terminal::Clear(terminal::ClearType::FromCursorDown))?;
+
+                print!("{output}");
+            }
+
+            self.ctx.stdout.flush()?;
+
+            if event::poll(Duration::from_millis(500))? {
+                if let event::Event::Key(key) = event::read()? {
+                    match (key.modifiers, key.code) {
+                        (KeyModifiers::NONE, KeyCode::Home) => cursor_index = 0,
+                        (KeyModifiers::NONE, KeyCode::End) => cursor_index = buffer.len(),
+                        (KeyModifiers::NONE, KeyCode::Left) => {
+                            cursor_index = cursor_index.saturating_sub(1)
+                        }
+                        (KeyModifiers::NONE, KeyCode::Right) => {
+                            if cursor_index < buffer.len() {
+                                cursor_index += 1;
+                            }
+                        }
+                        (KeyModifiers::NONE, KeyCode::Up) => {
+                            if history_offset < self.ctx.history.len() {
+                                history_offset += 1;
+                                buffer.clone_from(
+                                    &self.ctx.history[self.ctx.history.len() - history_offset],
+                                );
+                                cursor_index = buffer.len();
+                            }
+                        }
+                        (KeyModifiers::NONE, KeyCode::Down) => {
+                            if history_offset > 0 {
+                                history_offset -= 1;
+
+                                if history_offset > 0 {
+                                    buffer.clone_from(
+                                        &self.ctx.history[self.ctx.history.len() - history_offset],
+                                    );
+                                    cursor_index = buffer.len();
+                                } else {
+                                    buffer.clear();
+                                    cursor_index = 0;
+                                }
+                            }
+                        }
+                        (KeyModifiers::NONE, KeyCode::Backspace) => {
+                            if cursor_index > 0 {
+                                buffer.remove(cursor_index - 1);
+                                cursor_index -= 1;
+                            }
+                        }
+                        (KeyModifiers::NONE, KeyCode::Delete) => {
+                            if cursor_index != buffer.len() {
+                                buffer.remove(cursor_index);
+                            }
+                        }
+                        (KeyModifiers::NONE | KeyModifiers::SHIFT, KeyCode::Char(character)) => {
+                            buffer.insert(cursor_index, character);
+                            cursor_index += 1;
+                        }
+                        (KeyModifiers::NONE, KeyCode::Enter) => {
+                            break;
+                        }
+                        (KeyModifiers::CONTROL, KeyCode::Char('c')) => {
+                            print!("^C");
+                            self.post_prompt()?;
+                            self.ctx.last_result = Err(());
+                            return Ok(PromptCapture::Kill);
+                        }
+                        (KeyModifiers::CONTROL, KeyCode::Char('d')) => {
+                            print!("^D");
+                            self.post_prompt()?;
+                            self.ctx.last_result = Err(());
+                            return Ok(PromptCapture::End);
+                        }
+                        (KeyModifiers::CONTROL, KeyCode::Char('z')) => {
+                            print!("^Z");
+                            self.post_prompt()?;
+                            self.ctx.last_result = Err(());
+                            return Ok(PromptCapture::Suspend);
+                        }
+                        _ => (),
+                    };
+                }
+            }
+        }
+
+        self.post_prompt()?;
+
+        if !buffer.is_empty() && self.ctx.history.last() != Some(&buffer) {
+            self.ctx.history.push(buffer.clone());
+        }
+
+        Ok(PromptCapture::String(String::from_iter(buffer)))
+    }
+
+    fn post_prompt(&mut self) -> Result<(), io::Error> {
+        println!();
+        self.ctx.stdout.queue(cursor::MoveToColumn(0))?;
+        self.ctx.stdout.flush()?;
+        terminal::disable_raw_mode()?;
+        Ok(())
+    }
+
+    fn ps1(&self) -> String {
+        format!(
             "{}{}\x1b[m {}{}{}\x1b[m ",
             self.style.path_decoration,
             self.ctx.current_path,
-            self.style.prompt_decoration,
+            self.style.symbol_decoration,
             if self.ctx.last_result.is_ok() {
                 self.style.colour_success
             } else {
                 self.style.colour_fail
             },
-            self.style.regular_prompt
-        );
-
-        io::stdout().flush().unwrap();
-    }
-
-    pub fn print_ps2(&self) {
-        print!(
-            "{}{}\x1b[m ",
-            self.style.path_decoration, self.style.continue_prompt
-        );
-        io::stdout().flush().unwrap();
+            self.style.symbol
+        )
     }
 }

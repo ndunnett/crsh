@@ -11,6 +11,10 @@ pub struct ExecutionContext {
 }
 
 pub fn execute(input: &str) -> Result<(), ()> {
+    if input.is_empty() {
+        return Ok(());
+    }
+
     let mut parts = input.split_whitespace();
     let keyword = parts.next().unwrap_or_default();
     let args = parts.collect::<Vec<_>>();
