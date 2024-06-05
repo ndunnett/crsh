@@ -4,7 +4,7 @@ use std::io::{self, Stdout, Write};
 use std::time::Duration;
 
 use crossterm::event::{self, KeyCode, KeyModifiers};
-use crossterm::{cursor, terminal, QueueableCommand};
+use crossterm::{cursor, queue, terminal};
 
 use crate::interpreter;
 use crate::system;
@@ -112,7 +112,7 @@ impl<'a> Prompt<'a> {
 
     fn prompt(&mut self) -> Result<PromptCapture, io::Error> {
         terminal::enable_raw_mode()?;
-        self.ctx.stdout.queue(terminal::EnableLineWrap)?;
+        queue!(self.ctx.stdout, terminal::EnableLineWrap)?;
         self.ctx.update_path();
         let mut buffer: Vec<char> = Vec::new();
         let mut cursor_index: usize = 0;
@@ -131,28 +131,32 @@ impl<'a> Prompt<'a> {
 
                 output_rows = (strip_ansi_escapes::strip_str(&output)
                     .len()
-                    .div_ceil(cols as usize)
-                    - 1) as u16;
+                    .div_ceil(cols as usize)) as u16
+                    - 1;
 
                 match last_output_rows.cmp(&output_rows) {
                     Ordering::Less => {
                         if output_rows > taken_rows {
+                            queue!(
+                                self.ctx.stdout,
+                                terminal::ScrollUp(output_rows - last_output_rows)
+                            )?;
+
                             taken_rows = output_rows;
-                            self.ctx
-                                .stdout
-                                .queue(terminal::ScrollUp(output_rows - last_output_rows))?;
                         } else {
-                            self.ctx
-                                .stdout
-                                .queue(cursor::MoveToNextLine(output_rows - last_output_rows))?;
+                            queue!(
+                                self.ctx.stdout,
+                                cursor::MoveToNextLine(output_rows - last_output_rows)
+                            )?;
                         }
 
                         last_output_rows = output_rows;
                     }
                     Ordering::Greater => {
-                        self.ctx
-                            .stdout
-                            .queue(cursor::MoveToPreviousLine(last_output_rows - output_rows))?;
+                        queue!(
+                            self.ctx.stdout,
+                            cursor::MoveToPreviousLine(last_output_rows - output_rows)
+                        )?;
 
                         last_output_rows = output_rows;
                     }
@@ -160,19 +164,18 @@ impl<'a> Prompt<'a> {
                 }
 
                 if output_rows > 0 {
-                    self.ctx
-                        .stdout
-                        .queue(cursor::MoveToPreviousLine(output_rows))?;
+                    queue!(
+                        self.ctx.stdout,
+                        cursor::MoveToPreviousLine(output_rows),
+                        terminal::Clear(terminal::ClearType::FromCursorDown)
+                    )?;
                 } else {
-                    self.ctx.stdout.queue(cursor::MoveToColumn(0))?;
+                    queue!(
+                        self.ctx.stdout,
+                        cursor::MoveToColumn(0),
+                        terminal::Clear(terminal::ClearType::FromCursorDown)
+                    )?;
                 }
-
-                self.ctx
-                    .stdout
-                    .queue(terminal::Clear(terminal::ClearType::CurrentLine))?;
-                self.ctx
-                    .stdout
-                    .queue(terminal::Clear(terminal::ClearType::FromCursorDown))?;
 
                 print!("{output}");
             }
@@ -269,7 +272,7 @@ impl<'a> Prompt<'a> {
 
     fn post_prompt(&mut self) -> Result<(), io::Error> {
         println!();
-        self.ctx.stdout.queue(cursor::MoveToColumn(0))?;
+        queue!(self.ctx.stdout, cursor::MoveToColumn(0))?;
         self.ctx.stdout.flush()?;
         terminal::disable_raw_mode()?;
         Ok(())
