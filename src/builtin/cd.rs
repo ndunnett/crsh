@@ -3,7 +3,7 @@ use std::io::Write;
 use std::path::Path;
 
 use crate::builtin::Builtin;
-use crate::interpreter::ExecutionContext;
+use crate::system::ExecutionContext;
 use crate::system;
 
 enum CdOption {
@@ -48,7 +48,7 @@ impl Builtin for Cd {
         Ok(Box::new(Self { option, path }))
     }
 
-    fn run(&self, mut ctx: ExecutionContext) -> Result<(), ()> {
+    fn run(&self, mut ctx: ExecutionContext) -> i32 {
         let path = match (&self.path, &self.option) {
             (None, CdOption::Back) => {
                 if let Some(oldpwd) = env::var_os("OLDPWD") {
@@ -74,7 +74,7 @@ impl Builtin for Cd {
         if !Path::new(&path).is_dir() {
             let msg = format!("cd: cannot access '{path}': No such file or directory\n");
             let _ = ctx.error.write_all(msg.as_bytes());
-            Err(())
+            -1
         } else {
             if let Ok(pwd) = env::current_dir() {
                 env::set_var("OLDPWD", pwd);
@@ -83,9 +83,9 @@ impl Builtin for Cd {
             if let Err(e) = env::set_current_dir(&path) {
                 let msg = format!("cd: cannot access '{path}': {e}\n");
                 let _ = ctx.error.write_all(msg.as_bytes());
-                Err(())
+                -1
             } else {
-                Ok(())
+                0
             }
         }
     }

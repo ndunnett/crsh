@@ -5,9 +5,14 @@ use std::process::Command;
 
 pub mod io;
 
-use crate::interpreter::ExecutionContext;
+#[derive(Default, Clone)]
+pub struct ExecutionContext {
+    pub input: io::Input,
+    pub output: io::Output,
+    pub error: io::Error,
+}
 
-pub fn launch(keyword: &str, args: Vec<&str>, ctx: ExecutionContext) -> Result<(), ()> {
+pub fn launch(keyword: &str, args: &[&str], ctx: ExecutionContext) -> i32 {
     let args = args.iter().map(|s| s.to_string()).collect::<Vec<_>>();
 
     match Command::new(keyword)
@@ -18,18 +23,15 @@ pub fn launch(keyword: &str, args: Vec<&str>, ctx: ExecutionContext) -> Result<(
         .spawn()
     {
         Ok(mut c) => match c.wait() {
-            Ok(status) => {
-                if status.success() {
-                    Ok(())
-                } else {
-                    Err(())
-                }
+            Ok(status) => status.code().unwrap_or(-1),
+            Err(e) => {
+                eprintln!("crsh: {e}");
+                -1
             }
-            Err(_) => Err(()),
         },
         Err(e) => {
             eprintln!("crsh: {}", e);
-            Err(())
+            -1
         }
     }
 }

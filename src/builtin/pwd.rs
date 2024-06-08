@@ -2,7 +2,7 @@ use std::env;
 use std::io::Write;
 
 use crate::builtin::Builtin;
-use crate::interpreter::ExecutionContext;
+use crate::system::ExecutionContext;
 
 enum PwdOption {
     L,
@@ -30,7 +30,7 @@ impl Builtin for Pwd {
     }
 
     #[allow(clippy::match_single_binding)]
-    fn run(&self, mut ctx: ExecutionContext) -> Result<(), ()> {
+    fn run(&self, mut ctx: ExecutionContext) -> i32 {
         match &self.option {
             // -L and -P options not yet implemented
             // todo: https://pubs.opengroup.org/onlinepubs/9699919799/utilities/pwd.html
@@ -38,11 +38,11 @@ impl Builtin for Pwd {
                 if let Ok(path) = env::current_dir() {
                     let msg = format!("{}\n", path.display());
                     let _ = ctx.output.write_all(msg.as_bytes());
-                    Ok(())
+                    0
                 } else {
                     let msg = "pwd: failed to read current directory\n";
                     let _ = ctx.error.write_all(msg.as_bytes());
-                    Err(())
+                    -1
                 }
             }
         }

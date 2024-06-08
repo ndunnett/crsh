@@ -31,7 +31,7 @@ impl Default for PromptStyle<'_> {
 
 struct PromptContext {
     current_path: String,
-    last_result: Result<(), ()>,
+    exit_code: i32,
     history: Vec<Vec<char>>,
     stdout: Stdout,
 }
@@ -40,7 +40,7 @@ impl Default for PromptContext {
     fn default() -> Self {
         Self {
             current_path: Self::get_path(),
-            last_result: Ok(()),
+            exit_code: 0,
             history: Vec::new(),
             stdout: io::stdout(),
         }
@@ -87,7 +87,7 @@ impl<'a> Prompt<'a> {
         loop {
             match self.prompt() {
                 Ok(PromptCapture::String(input)) => {
-                    self.ctx.last_result = interpreter::execute(&input);
+                    self.ctx.exit_code = interpreter::interpret(&input);
                 }
                 Ok(PromptCapture::Kill) => {
                     // todo: ctrl-c unimplemented
@@ -102,7 +102,7 @@ impl<'a> Prompt<'a> {
                 }
                 Err(e) => {
                     eprintln!("crsh: {e}");
-                    self.ctx.last_result = Err(());
+                    self.ctx.exit_code = -1;
                 }
             }
         }
@@ -240,19 +240,19 @@ impl<'a> Prompt<'a> {
                         (KeyModifiers::CONTROL, KeyCode::Char('c')) => {
                             print!("^C");
                             self.post_prompt()?;
-                            self.ctx.last_result = Err(());
+                            self.ctx.exit_code = -1;
                             return Ok(PromptCapture::Kill);
                         }
                         (KeyModifiers::CONTROL, KeyCode::Char('d')) => {
                             print!("^D");
                             self.post_prompt()?;
-                            self.ctx.last_result = Err(());
+                            self.ctx.exit_code = -1;
                             return Ok(PromptCapture::End);
                         }
                         (KeyModifiers::CONTROL, KeyCode::Char('z')) => {
                             print!("^Z");
                             self.post_prompt()?;
-                            self.ctx.last_result = Err(());
+                            self.ctx.exit_code = -1;
                             return Ok(PromptCapture::Suspend);
                         }
                         _ => (),
@@ -284,10 +284,9 @@ impl<'a> Prompt<'a> {
             self.style.path_decoration,
             self.ctx.current_path,
             self.style.symbol_decoration,
-            if self.ctx.last_result.is_ok() {
-                self.style.colour_success
-            } else {
-                self.style.colour_fail
+            match self.ctx.exit_code {
+                -255..=-1 => self.style.colour_fail,
+                _ => self.style.colour_success,
             },
             self.style.symbol
         )

@@ -1,7 +1,7 @@
 use std::io::Write;
 
 use crate::builtin::{self, Builtin};
-use crate::interpreter::ExecutionContext;
+use crate::system::ExecutionContext;
 use crate::system;
 
 pub struct Which {
@@ -14,7 +14,7 @@ impl Builtin for Which {
         Ok(Box::new(Self { keyword }))
     }
 
-    fn run(&self, mut ctx: ExecutionContext) -> Result<(), ()> {
+    fn run(&self, mut ctx: ExecutionContext) -> i32 {
         let msg = if builtin::get_builder(&self.keyword).is_some() {
             format!("{}: shell builtin\n", self.keyword)
         } else if let Some(path) = system::find_on_path(&self.keyword) {
@@ -24,9 +24,9 @@ impl Builtin for Which {
         };
 
         if ctx.output.write_all(msg.as_bytes()).is_err() {
-            Err(())
+            -1
         } else {
-            Ok(())
+            0
         }
     }
 }

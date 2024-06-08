@@ -12,13 +12,13 @@ use pwd::Pwd;
 use type_::Type;
 use which::Which;
 
-use crate::interpreter::ExecutionContext;
+use crate::system::ExecutionContext;
 
 pub trait Builtin {
     fn build(args: &[&str]) -> Result<Box<dyn Builtin>, String>
     where
         Self: Sized;
-    fn run(&self, ctx: ExecutionContext) -> Result<(), ()>;
+    fn run(&self, ctx: ExecutionContext) -> i32;
 }
 
 type BuilderOption = Option<Box<dyn Fn(&[&str]) -> Result<Box<dyn Builtin>, String>>>;

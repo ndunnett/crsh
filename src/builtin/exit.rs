@@ -1,7 +1,7 @@
 use std::process::exit;
 
 use crate::builtin::Builtin;
-use crate::interpreter::ExecutionContext;
+use crate::system::ExecutionContext;
 
 pub struct Exit {
     code: i32,
@@ -17,7 +17,7 @@ impl Builtin for Exit {
         Ok(Box::new(Self { code }))
     }
 
-    fn run(&self, _ctx: ExecutionContext) -> Result<(), ()> {
+    fn run(&self, _ctx: ExecutionContext) -> i32 {
         exit(self.code)
     }
 }

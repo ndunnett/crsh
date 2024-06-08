@@ -1,7 +1,7 @@
 use std::io::Write;
 
 use crate::builtin::Builtin;
-use crate::interpreter::ExecutionContext;
+use crate::system::ExecutionContext;
 
 pub struct Echo {
     message: String,
@@ -14,11 +14,11 @@ impl Builtin for Echo {
         }))
     }
 
-    fn run(&self, mut ctx: ExecutionContext) -> Result<(), ()> {
+    fn run(&self, mut ctx: ExecutionContext) -> i32 {
         if ctx.output.write_all(self.message.as_bytes()).is_err() {
-            Err(())
+            -1
         } else {
-            Ok(())
+            0
         }
     }
 }

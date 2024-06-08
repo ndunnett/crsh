@@ -9,3 +9,4 @@ license-file = "LICENSE"
 [dependencies]
 crossterm = "0.27"
 strip-ansi-escapes = "0.2.0"
+logos = "0.14.0"
