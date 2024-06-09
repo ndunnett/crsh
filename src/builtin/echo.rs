@@ -1,7 +1,5 @@
-use std::io::Write;
-
 use crate::builtin::Builtin;
-use crate::system::ExecutionContext;
+use crate::shell::Shell;
 
 pub struct Echo {
     message: String,
@@ -10,15 +8,12 @@ pub struct Echo {
 impl Builtin for Echo {
     fn build(args: &[&str]) -> Result<Box<dyn Builtin>, String> {
         Ok(Box::new(Self {
-            message: format!("{}\n", args.join(" ")),
+            message: args.join(" "),
         }))
     }
 
-    fn run(&self, mut ctx: ExecutionContext) -> i32 {
-        if ctx.output.write_all(self.message.as_bytes()).is_err() {
-            -1
-        } else {
-            0
-        }
+    fn run(&self, shell: &mut Shell) -> i32 {
+        shell.println(&self.message);
+        0
     }
 }

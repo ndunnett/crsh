@@ -3,11 +3,9 @@ use std::io::Write;
 mod executing;
 mod parsing;
 
-use crate::system::ExecutionContext;
+use crate::shell::Shell;
 
-pub fn interpret(input: &str) -> i32 {
-    let mut ctx = ExecutionContext::default();
-
+pub fn interpret(shell: &mut Shell, input: &str) -> i32 {
     let ast = match parsing::parse(input) {
         Ok(ast) => {
             println!("{ast:#?}\n");
@@ -15,10 +13,10 @@ pub fn interpret(input: &str) -> i32 {
         }
         Err(e) => {
             let msg = format!("crsh: {e}\n");
-            let _ = ctx.error.write_all(msg.as_bytes());
+            let _ = shell.error.write_all(msg.as_bytes());
             return -1;
         }
     };
 
-    executing::execute(&mut ctx, &ast)
+    executing::execute(shell, &ast)
 }

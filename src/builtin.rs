@@ -5,32 +5,25 @@ mod pwd;
 mod type_;
 mod which;
 
-use cd::Cd;
-use echo::Echo;
-use exit::Exit;
-use pwd::Pwd;
-use type_::Type;
-use which::Which;
-
-use crate::system::ExecutionContext;
+use crate::shell::Shell;
 
 pub trait Builtin {
     fn build(args: &[&str]) -> Result<Box<dyn Builtin>, String>
     where
         Self: Sized;
-    fn run(&self, ctx: ExecutionContext) -> i32;
+    fn run(&self, shell: &mut Shell) -> i32;
 }
 
 type BuilderOption = Option<Box<dyn Fn(&[&str]) -> Result<Box<dyn Builtin>, String>>>;
 
 pub fn get_builder(keyword: &str) -> BuilderOption {
     match keyword {
-        "cd" => Some(Box::new(Cd::build)),
-        "echo" => Some(Box::new(Echo::build)),
-        "exit" => Some(Box::new(Exit::build)),
-        "pwd" => Some(Box::new(Pwd::build)),
-        "type" => Some(Box::new(Type::build)),
-        "which" => Some(Box::new(Which::build)),
+        "cd" => Some(Box::new(cd::Cd::build)),
+        "echo" => Some(Box::new(echo::Echo::build)),
+        "exit" => Some(Box::new(exit::Exit::build)),
+        "pwd" => Some(Box::new(pwd::Pwd::build)),
+        "type" => Some(Box::new(type_::Type::build)),
+        "which" => Some(Box::new(which::Which::build)),
         _ => None,
     }
 }

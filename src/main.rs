@@ -3,12 +3,15 @@ use std::process::ExitCode;
 mod builtin;
 mod interpreter;
 mod prompt;
-mod system;
+mod shell;
 
 use crate::prompt::Prompt;
+use crate::shell::Shell;
 
 fn main() -> ExitCode {
-    if Prompt::new().interactive_loop().is_ok() {
+    let mut shell = Shell::new();
+
+    if Prompt::new(&mut shell).interactive_loop().is_ok() {
         ExitCode::SUCCESS
     } else {
         ExitCode::FAILURE

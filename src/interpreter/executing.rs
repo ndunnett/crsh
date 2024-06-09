@@ -1,35 +1,31 @@
-use std::io::Write;
-
 use crate::builtin;
-use crate::system::{find_on_path, launch, ExecutionContext};
+use crate::shell::Shell;
 
 use super::parsing::*;
 
-fn execute_simple(ctx: &mut ExecutionContext, keyword: &str, args: &[&str]) -> i32 {
+fn execute_simple(shell: &mut Shell, keyword: &str, args: &[&str]) -> i32 {
     if let Some(builder) = builtin::get_builder(keyword) {
         match builder(args) {
-            Ok(builtin) => builtin.run(ctx.clone()),
+            Ok(builtin) => builtin.run(shell),
             Err(e) => {
-                let _ = ctx.error.write_all(e.as_bytes());
+                shell.eprintln(e);
                 -1
             }
         }
-    } else if find_on_path(keyword).is_some() {
-        launch(keyword, args, ctx.clone())
+    } else if shell.find_on_path(keyword).is_some() {
+        shell.launch(keyword, args)
     } else {
-        let msg = format!("crsh: command not found: {keyword}\n");
-        let _ = ctx.error.write_all(msg.as_bytes());
+        shell.eprintln(format!("crsh: command not found: {keyword}"));
         -1
     }
 }
 
-pub fn execute(ctx: &mut ExecutionContext, ast: &Command) -> i32 {
+pub fn execute(shell: &mut Shell, ast: &Command) -> i32 {
     match ast {
         Command::Empty => 0,
-        Command::Simple { keyword, args } => execute_simple(ctx, keyword, args),
+        Command::Simple { keyword, args } => execute_simple(shell, keyword, args),
         _ => {
-            let msg = "crsh: error: unimplemented functionality\n";
-            let _ = ctx.error.write_all(msg.as_bytes());
+            shell.eprintln("crsh: unimplemented functionality");
             -1
         }
     }

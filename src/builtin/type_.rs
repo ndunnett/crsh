@@ -1,8 +1,5 @@
-use std::io::Write;
-
 use crate::builtin::{self, Builtin};
-use crate::system::ExecutionContext;
-use crate::system;
+use crate::shell::Shell;
 
 pub struct Type {
     keyword: String,
@@ -14,19 +11,15 @@ impl Builtin for Type {
         Ok(Box::new(Self { keyword }))
     }
 
-    fn run(&self, mut ctx: ExecutionContext) -> i32 {
-        let msg = if builtin::get_builder(&self.keyword).is_some() {
-            format!("{} is a shell builtin\n", self.keyword)
-        } else if let Some(path) = system::find_on_path(&self.keyword) {
-            format!("{} is {}\n", self.keyword, path.display())
+    fn run(&self, shell: &mut Shell) -> i32 {
+        if builtin::get_builder(&self.keyword).is_some() {
+            shell.println(format!("{} is a shell builtin", self.keyword));
+        } else if let Some(path) = shell.find_on_path(&self.keyword) {
+            shell.println(format!("{} is {}", self.keyword, path.display()));
         } else {
-            format!("{} not found\n", self.keyword)
-        };
-
-        if ctx.output.write_all(msg.as_bytes()).is_err() {
-            -1
-        } else {
-            0
+            shell.println(format!("{} not found", self.keyword));
         }
+
+        0
     }
 }
