@@ -5,7 +5,7 @@ use std::time::Duration;
 use crossterm::event::{self, KeyCode, KeyModifiers};
 use crossterm::{cursor, queue, terminal};
 
-use crate::interpreter;
+use crate::interpreter::interpret;
 use crate::shell::Shell;
 
 struct PromptStyle<'a> {
@@ -52,7 +52,7 @@ impl<'a> Prompt<'a> {
         loop {
             match self.readline() {
                 Ok(PromptCapture::String(input)) => {
-                    self.shell.exit_code = interpreter::interpret(self.shell, &input);
+                    self.shell.exit_code = interpret(self.shell, &input);
                 }
                 Ok(PromptCapture::Kill) => {
                     // todo: ctrl-c unimplemented
@@ -242,8 +242,8 @@ impl<'a> Prompt<'a> {
     }
 
     fn prompt(&self) -> String {
-        let pwd = &self.shell.common_env.pwd;
-        let home = &self.shell.common_env.home;
+        let pwd = &self.shell.env.pwd;
+        let home = &self.shell.env.home;
 
         let current_dir = if pwd.starts_with(home) {
             pwd.replacen(home, "~", 1)
@@ -262,7 +262,7 @@ impl<'a> Prompt<'a> {
             current_dir,
             self.style.symbol_decoration,
             colour,
-            self.shell.common_env.ps1
+            self.shell.env.ps1
         )
     }
 }

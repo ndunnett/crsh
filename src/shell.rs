@@ -2,15 +2,15 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-mod io_descriptors;
 mod common_env;
+mod io_descriptors;
 
-pub use io_descriptors::*;
 pub use common_env::*;
+pub use io_descriptors::*;
 
 #[derive(Default)]
 pub struct Shell {
-    pub common_env: CommonEnv,
+    pub env: CommonEnv,
     pub exit_code: i32,
     pub input: Input,
     pub output: Output,
@@ -66,7 +66,7 @@ impl Shell {
     where
         P: AsRef<Path>,
     {
-        self.common_env
+        self.env
             .path
             .iter()
             .filter_map(|dir| {

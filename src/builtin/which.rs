@@ -11,13 +11,13 @@ impl Builtin for Which {
         Ok(Box::new(Self { keyword }))
     }
 
-    fn run(&self, shell: &mut Shell) -> i32 {
+    fn run(&self, sh: &mut Shell) -> i32 {
         if builtin::get_builder(&self.keyword).is_some() {
-            shell.println(format!("{}: shell builtin", self.keyword));
-        } else if let Some(path) = shell.find_on_path(&self.keyword) {
-            shell.println(path.display().to_string());
+            sh.println(format!("{}: shell builtin", self.keyword));
+        } else if let Some(path) = sh.find_on_path(&self.keyword) {
+            sh.println(path.display().to_string());
         } else {
-            shell.println(format!("{} not found", self.keyword));
+            sh.println(format!("{} not found", self.keyword));
         }
 
         0

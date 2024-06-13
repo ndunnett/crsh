@@ -17,7 +17,7 @@ impl Builtin for Exit {
         Ok(Box::new(Self { code }))
     }
 
-    fn run(&self, _shell: &mut Shell) -> i32 {
+    fn run(&self, _sh: &mut Shell) -> i32 {
         exit(self.code)
     }
 }

@@ -29,16 +29,16 @@ impl Builtin for Pwd {
     }
 
     #[allow(clippy::match_single_binding)]
-    fn run(&self, shell: &mut Shell) -> i32 {
+    fn run(&self, sh: &mut Shell) -> i32 {
         match &self.option {
             // -L and -P options not yet implemented
             // todo: https://pubs.opengroup.org/onlinepubs/9699919799/utilities/pwd.html
             _ => {
                 if let Ok(path) = env::current_dir() {
-                    shell.println(path.display().to_string());
+                    sh.println(path.display().to_string());
                     0
                 } else {
-                    shell.eprintln("pwd: failed to read current directory");
+                    sh.eprintln("pwd: failed to read current directory");
                     -1
                 }
             }

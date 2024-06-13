@@ -11,7 +11,7 @@ pub trait Builtin {
     fn build(args: &[&str]) -> Result<Box<dyn Builtin>, String>
     where
         Self: Sized;
-    fn run(&self, shell: &mut Shell) -> i32;
+    fn run(&self, sh: &mut Shell) -> i32;
 }
 
 type BuilderOption = Option<Box<dyn Fn(&[&str]) -> Result<Box<dyn Builtin>, String>>>;

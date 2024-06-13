@@ -1,8 +1,8 @@
-use logos::{Lexer, Logos, Span};
+use logos::{Lexer, Logos};
 
-type ParseResult<T> = Result<T, (String, Span)>;
+type ParseResult<T> = Result<T, String>;
 
-#[derive(Debug, Logos)]
+#[derive(Debug, Copy, Clone, Logos)]
 #[logos(skip r"\s+")]
 enum Token<'a> {
     #[token("|", priority = 10)]
@@ -14,11 +14,29 @@ enum Token<'a> {
     #[token("&&", priority = 10)]
     And,
 
-    #[regex(r"[^\s]+", priority = 1, callback = |lex| lex.slice())]
+    #[regex(r"[^\s\|&]+", priority = 1, callback = |lex| lex.slice())]
     Word(&'a str),
 }
 
-#[derive(Debug)]
+enum BindingPower {
+    None,
+    _Prefix(u8),
+    _Postfix(u8),
+    Infix(u8, u8),
+}
+
+impl<'a> Token<'a> {
+    fn bp(&self) -> BindingPower {
+        match self {
+            Token::And => BindingPower::Infix(2, 2),
+            Token::Or => BindingPower::Infix(2, 2),
+            Token::Pipe => BindingPower::Infix(1, 1),
+            _ => BindingPower::None,
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
 pub enum Command<'a> {
     Empty,
     Simple {
@@ -39,89 +57,75 @@ pub enum Command<'a> {
     },
 }
 
-fn parse_command<'a>(lexer: &mut Lexer<'a, Token<'a>>) -> ParseResult<Command<'a>> {
-    let mut command = Command::Empty;
+pub struct Parser<'a> {
+    lexer: Lexer<'a, Token<'a>>,
+    next: Option<Result<Token<'a>, ()>>,
+    last: Option<Result<Token<'a>, ()>>,
+}
 
-    while let Some(token) = lexer.next() {
-        match (token, &mut command) {
-            // simple
-            (Ok(Token::Word(s)), Command::Empty) => {
-                command = Command::Simple {
-                    keyword: s,
-                    args: Vec::new(),
-                };
-            }
-            (Ok(Token::Word(s)), Command::Simple { args, .. }) => {
-                args.push(s);
-            }
-            // pipeline
-            (Ok(Token::Pipe), _) => {
-                command = Command::Pipeline {
-                    left: Box::new(command),
-                    right: Box::new(parse_command(lexer)?),
-                };
-            }
-            // and
-            (Ok(Token::And), _) => {
-                let rem = parse_command(lexer)?;
+impl<'a> Parser<'a> {
+    pub fn new(input: &'a str) -> Self {
+        let mut lexer = Token::lexer(input);
+        let next = lexer.next();
 
-                match rem {
-                    Command::Pipeline { left, right } => {
-                        command = Command::Pipeline {
-                            left: Box::new(Command::And {
-                                left: Box::new(command),
-                                right: left,
-                            }),
-                            right,
-                        };
-                    }
-                    _ => {
-                        command = Command::And {
-                            left: Box::new(command),
-                            right: Box::new(rem),
-                        };
-                    }
-                }
-            }
-            // or
-            (Ok(Token::Or), _) => {
-                let rem = parse_command(lexer)?;
-
-                match rem {
-                    Command::Pipeline { left, right } => {
-                        command = Command::Pipeline {
-                            left: Box::new(Command::Or {
-                                left: Box::new(command),
-                                right: left,
-                            }),
-                            right,
-                        };
-                    }
-                    _ => {
-                        command = Command::Or {
-                            left: Box::new(command),
-                            right: Box::new(rem),
-                        };
-                    }
-                }
-            }
-            // error
-            (Ok(token), _) => {
-                return Err((
-                    format!("unexpected \"{token:?}\" here").to_owned(),
-                    lexer.span(),
-                ));
-            }
-            (Err(e), _) => return Err((format!("error: {e:?}").to_owned(), lexer.span())),
+        Self {
+            lexer,
+            next,
+            last: None,
         }
     }
 
-    Ok(command)
-}
+    fn peek(&self) -> Option<Result<Token<'a>, ()>> {
+        self.next
+    }
 
-pub fn parse(input: &str) -> Result<Command, String> {
-    match parse_command(&mut Token::lexer(input)) {
-        Ok(ast) => Ok(ast),
-        Err(e) => Err(format!("{}: {:?}", e.0, e.1)),
+    fn next(&mut self) -> Option<Result<Token<'a>, ()>> {
+        self.last = self.next;
+        self.next = self.lexer.next();
+        self.last
+    }
+
+    pub fn parse(&mut self, bp: u8) -> ParseResult<Command<'a>> {
+        let mut ast = Command::Empty;
+
+        while let Some(Ok(token)) = self.peek() {
+            match (&ast, token.bp()) {
+                (Command::Empty, BindingPower::None) => {
+                    ast = match token {
+                        Token::Word(keyword) => {
+                            self.next();
+                            let mut args = Vec::new();
+
+                            while let Some(Ok(Token::Word(arg))) = self.peek() {
+                                args.push(arg);
+                                self.next();
+                            }
+
+                            Command::Simple { keyword, args }
+                        }
+                        t => return Err(format!("bad token: {t:?}")),
+                    };
+                }
+                (_, BindingPower::Infix(left_bp, right_bp)) => {
+                    if left_bp < bp {
+                        break;
+                    }
+                    self.next();
+
+                    let left = Box::new(ast);
+                    let right = Box::new(self.parse(right_bp)?);
+
+                    ast = match token {
+                        Token::And => Command::And { left, right },
+                        Token::Or => Command::Or { left, right },
+                        Token::Pipe => Command::Pipeline { left, right },
+                        t => return Err(format!("bad token: {t:?}")),
+                    };
+                }
+                _ => break,
+            }
+        }
+
+        Ok(ast)
     }
 }

@@ -46,15 +46,15 @@ impl Builtin for Cd {
         Ok(Box::new(Self { option, path }))
     }
 
-    fn run(&self, shell: &mut Shell) -> i32 {
+    fn run(&self, sh: &mut Shell) -> i32 {
         let path = match (&self.path, &self.option) {
-            (None, CdOption::Back) => shell.common_env.oldpwd.clone(),
-            (None, _) => shell.common_env.home.clone(),
+            (None, CdOption::Back) => sh.env.oldpwd.clone(),
+            (None, _) => sh.env.home.clone(),
             // -L and -P options not yet implemented
             // todo: https://pubs.opengroup.org/onlinepubs/9699919799/utilities/cd.html
             (Some(s), _) => {
                 if s.starts_with('~') {
-                    s.replacen('~', &shell.common_env.home, 1)
+                    s.replacen('~', &sh.env.home, 1)
                 } else {
                     s.into()
                 }
@@ -62,23 +62,23 @@ impl Builtin for Cd {
         };
 
         if !Path::new(&path).is_dir() {
-            shell.eprintln(format!(
+            sh.eprintln(format!(
                 "cd: cannot access '{path}': No such file or directory"
             ));
             return -1;
         }
 
         if let Err(e) = env::set_current_dir(&path) {
-            shell.eprintln(format!("cd: cannot access '{path}': {e}"));
+            sh.eprintln(format!("cd: cannot access '{path}': {e}"));
             -1
         } else {
             let pwd = env::current_dir()
                 .map(|p| p.display().to_string())
                 .unwrap_or(path);
 
-            env::set_var("OLDPWD", &shell.common_env.pwd);
-            shell.common_env.oldpwd.clone_from(&shell.common_env.pwd);
-            shell.common_env.pwd = pwd;
+            env::set_var("OLDPWD", &sh.env.pwd);
+            sh.env.oldpwd.clone_from(&sh.env.pwd);
+            sh.env.pwd = pwd;
             0
         }
     }

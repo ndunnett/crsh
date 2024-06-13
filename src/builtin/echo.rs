@@ -12,8 +12,8 @@ impl Builtin for Echo {
         }))
     }
 
-    fn run(&self, shell: &mut Shell) -> i32 {
-        shell.println(&self.message);
+    fn run(&self, sh: &mut Shell) -> i32 {
+        sh.println(&self.message);
         0
     }
 }

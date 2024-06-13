@@ -1,22 +1,17 @@
-use std::io::Write;
+use crate::shell::Shell;
 
 mod executing;
 mod parsing;
 
-use crate::shell::Shell;
-
-pub fn interpret(shell: &mut Shell, input: &str) -> i32 {
-    let ast = match parsing::parse(input) {
+pub fn interpret(sh: &mut Shell, input: &str) -> i32 {
+    match parsing::Parser::new(input).parse(0) {
         Ok(ast) => {
-            println!("{ast:#?}\n");
-            ast
+            sh.println(format!("{ast:#?}\n"));
+            executing::execute(sh, &ast)
         }
         Err(e) => {
-            let msg = format!("crsh: {e}\n");
-            let _ = shell.error.write_all(msg.as_bytes());
-            return -1;
+            sh.eprintln(format!("crsh: parsing error: {e}"));
+            -1
         }
-    };
-
-    executing::execute(shell, &ast)
+    }
 }
