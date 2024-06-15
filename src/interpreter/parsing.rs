@@ -9,10 +9,13 @@ enum Token<'a> {
     Pipe,
 
     #[token("||", priority = 10)]
-    Or,
+    DoublePipe,
+
+    #[token("&", priority = 10)]
+    And,
 
     #[token("&&", priority = 10)]
-    And,
+    DoubleAnd,
 
     #[regex(r"[^\s\|&]+", priority = 1, callback = |lex| lex.slice())]
     Word(&'a str),
@@ -26,10 +29,10 @@ enum BindingPower {
 }
 
 impl<'a> Token<'a> {
-    fn bp(&self) -> BindingPower {
+    fn bp(&self, _is_prefix: bool) -> BindingPower {
         match self {
-            Token::And => BindingPower::Infix(2, 2),
-            Token::Or => BindingPower::Infix(2, 2),
+            Token::DoubleAnd => BindingPower::Infix(2, 2),
+            Token::DoublePipe => BindingPower::Infix(2, 2),
             Token::Pipe => BindingPower::Infix(1, 1),
             _ => BindingPower::None,
         }
@@ -87,9 +90,10 @@ impl<'a> Parser<'a> {
 
     pub fn parse(&mut self, bp: u8) -> ParseResult<Command<'a>> {
         let mut ast = Command::Empty;
+        let mut is_prefix = true;
 
         while let Some(Ok(token)) = self.peek() {
-            match (&ast, token.bp()) {
+            match (&ast, token.bp(is_prefix)) {
                 (Command::Empty, BindingPower::None) => {
                     ast = match token {
                         Token::Word(keyword) => {
@@ -106,24 +110,48 @@ impl<'a> Parser<'a> {
                         t => return Err(format!("bad token: {t:?}")),
                     };
                 }
+                // (Command::Empty, BindingPower::Prefix(right_bp)) => {
+                //     self.next();
+                //     let operand = Box::new(self.parse(right_bp)?);
+
+                //     ast = match token {
+                //         Token::_ => Command::_ { operand },
+                //         t => return Err(format!("bad token: {t:?}")),
+                //     };
+                // }
+                // (_, BindingPower::Postfix(left_bp)) => {
+                //     if left_bp < bp {
+                //         break;
+                //     }
+
+                //     self.next();
+                //     let operand = Box::new(ast);
+
+                //     ast = match token {
+                //         Token::_ => Command::_ { operand },
+                //         t => return Err(format!("bad token: {t:?}")),
+                //     };
+                // }
                 (_, BindingPower::Infix(left_bp, right_bp)) => {
                     if left_bp < bp {
                         break;
                     }
-                    self.next();
 
+                    self.next();
                     let left = Box::new(ast);
                     let right = Box::new(self.parse(right_bp)?);
 
                     ast = match token {
-                        Token::And => Command::And { left, right },
-                        Token::Or => Command::Or { left, right },
+                        Token::DoubleAnd => Command::And { left, right },
+                        Token::DoublePipe => Command::Or { left, right },
                         Token::Pipe => Command::Pipeline { left, right },
                         t => return Err(format!("bad token: {t:?}")),
                     };
                 }
                 _ => break,
             }
+
+            is_prefix = false;
         }
 
         Ok(ast)
