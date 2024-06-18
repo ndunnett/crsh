@@ -24,8 +24,8 @@ impl Shell {
     pub fn interpret(&mut self, input: &str) {
         self.exit_code = match parsing::Parser::new(input).parse(0) {
             Ok(ast) => {
-                self.io.println(format!("{ast:#?}\n"));
-                self.execute(&mut self.io.clone(), &ast)
+                // self.io.println(format!("{ast:#?}\n"));
+                self.execute(None, &ast)
             }
             Err(e) => {
                 self.io.eprintln(format!("crsh: parsing error: {e}"));

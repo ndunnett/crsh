@@ -1,4 +1,4 @@
-use std::io::{self, Write};
+use std::io::{self, Read, Write};
 
 mod input;
 mod output;
@@ -24,6 +24,12 @@ impl Default for IOContext {
 }
 
 impl IOContext {
+    pub fn _read(&mut self) -> Result<String, io::Error> {
+        let mut buffer = String::new();
+        self.input.read_to_string(&mut buffer)?;
+        Ok(buffer)
+    }
+
     pub fn print<S: AsRef<str>>(&mut self, msg: S) {
         let _ = self.output.write_all(msg.as_ref().as_bytes());
     }

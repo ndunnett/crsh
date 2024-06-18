@@ -32,31 +32,27 @@ impl<'a> Token<'a> {
     fn bp(&self, _is_prefix: bool) -> BindingPower {
         match self {
             Token::DoubleAnd => BindingPower::Infix(3, 4),
-            Token::DoublePipe => BindingPower::Infix(3, 4),
+            Token::DoublePipe => BindingPower::Infix(5, 6),
             Token::Pipe => BindingPower::Infix(1, 2),
             _ => BindingPower::None,
         }
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Command<'a> {
     Empty,
     Simple {
         keyword: &'a str,
         args: Vec<&'a str>,
     },
-    And {
-        left: Box<Command<'a>>,
-        right: Box<Command<'a>>,
-    },
-    Or {
+    Logical {
+        and: bool,
         left: Box<Command<'a>>,
         right: Box<Command<'a>>,
     },
     Pipeline {
-        left: Box<Command<'a>>,
-        right: Box<Command<'a>>,
+        cmds: Vec<Command<'a>>,
     },
 }
 
@@ -138,13 +134,28 @@ impl<'a> Parser<'a> {
                     }
 
                     self.next();
-                    let left = Box::new(ast);
-                    let right = Box::new(self.parse(right_bp)?);
 
                     ast = match token {
-                        Token::DoubleAnd => Command::And { left, right },
-                        Token::DoublePipe => Command::Or { left, right },
-                        Token::Pipe => Command::Pipeline { left, right },
+                        Token::DoubleAnd => Command::Logical {
+                            and: true,
+                            left: Box::new(ast),
+                            right: Box::new(self.parse(right_bp)?),
+                        },
+                        Token::DoublePipe => Command::Logical {
+                            and: false,
+                            left: Box::new(ast),
+                            right: Box::new(self.parse(right_bp)?),
+                        },
+                        Token::Pipe => {
+                            let mut cmds = if let Command::Pipeline { cmds: next_cmds } = ast {
+                                next_cmds
+                            } else {
+                                vec![ast]
+                            };
+
+                            cmds.push(self.parse(right_bp)?);
+                            Command::Pipeline { cmds }
+                        }
                         t => return Err(format!("bad token: {t:?}")),
                     };
                 }
