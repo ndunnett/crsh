@@ -1,10 +1,14 @@
 [package]
 name = "crsh"
-version = "0.1.0"
+description = "Crappy Rust SHell. Basic implementation of a unix shell written in Rust, not meant to actually be used or taken seriously."
+version = "0.0.1"
 edition = "2021"
 readme = "README.md"
+homepage = "https://github.com/ndunnett/crsh"
 repository = "https://github.com/ndunnett/crsh"
 license-file = "LICENSE"
+categories = ["command-line-utilities"]
+keywords = ["shell", "unix"]
 
 [dependencies]
 crossterm = "0.27"
