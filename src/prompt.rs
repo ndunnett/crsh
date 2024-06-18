@@ -123,12 +123,8 @@ impl<'a> Prompt<'a> {
             if rows > 0 {
                 let ps1 = self.prompt();
                 let buffer_string = buffer.iter().collect::<String>();
-                let output = format!("{ps1}{buffer_string}");
-
-                output_rows = (strip_ansi_escapes::strip_str(&output)
-                    .len()
-                    .div_ceil(cols as usize)) as u16
-                    - 1;
+                let ps1_len = strip_ansi_escapes::strip_str(&ps1).len();
+                output_rows = ((ps1_len + buffer.len()).div_ceil(cols as usize)) as u16 - 1;
 
                 match last_output_rows.cmp(&output_rows) {
                     Ordering::Less => {
@@ -173,7 +169,12 @@ impl<'a> Prompt<'a> {
                     )?;
                 }
 
-                print!("{output}");
+                print!("{ps1}{buffer_string}");
+
+                queue!(
+                    self.shell.io.output,
+                    cursor::MoveToColumn((ps1_len + cursor_index) as u16 % cols),
+                )?;
             }
 
             self.shell.io.output.flush()?;
