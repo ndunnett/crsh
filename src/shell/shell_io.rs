@@ -24,6 +24,14 @@ impl Default for IOContext {
 }
 
 impl IOContext {
+    pub fn _null() -> Self {
+        Self {
+            input: Input::Null,
+            output: Output::Null,
+            error: Output::Null,
+        }
+    }
+
     pub fn _read(&mut self) -> Result<String, io::Error> {
         let mut buffer = String::new();
         self.input.read_to_string(&mut buffer)?;

@@ -4,6 +4,7 @@ use std::process::Stdio;
 
 #[derive(Debug)]
 pub enum Output {
+    Null,
     Pipe(os_pipe::PipeWriter),
     File(fs::File),
     Stdout(io::Stdout),
@@ -43,6 +44,7 @@ impl From<os_pipe::PipeWriter> for Output {
 impl From<Output> for Stdio {
     fn from(output: Output) -> Stdio {
         match output {
+            Output::Null => Stdio::null(),
             Output::Pipe(pipe) => pipe.into(),
             Output::File(file) => file.into(),
             Output::Stdout(_) => Stdio::inherit(),
@@ -54,6 +56,7 @@ impl From<Output> for Stdio {
 impl io::Write for Output {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         match *self {
+            Self::Null => Ok(0),
             Self::Pipe(ref mut pipe) => pipe.write(buf),
             Self::File(ref mut file) => file.write(buf),
             Self::Stdout(ref mut stream) => stream.write(buf),
@@ -63,6 +66,7 @@ impl io::Write for Output {
 
     fn write_all(&mut self, buf: &[u8]) -> io::Result<()> {
         match *self {
+            Self::Null => Ok(()),
             Self::Pipe(ref mut pipe) => pipe.write_all(buf),
             Self::File(ref mut file) => file.write_all(buf),
             Self::Stdout(ref mut stream) => stream.write_all(buf),
@@ -72,6 +76,7 @@ impl io::Write for Output {
 
     fn flush(&mut self) -> io::Result<()> {
         match *self {
+            Self::Null => Ok(()),
             Self::Pipe(ref mut pipe) => pipe.flush(),
             Self::File(ref mut file) => file.flush(),
             Self::Stdout(ref mut stream) => stream.flush(),
@@ -83,6 +88,7 @@ impl io::Write for Output {
 impl Clone for Output {
     fn clone(&self) -> Self {
         match *self {
+            Self::Null => Self::Null,
             Self::Pipe(ref pipe) => Self::Pipe(pipe.try_clone().unwrap()),
             Self::File(ref file) => Self::File(file.try_clone().unwrap()),
             Self::Stdout(_) => Self::Stdout(io::stdout()),
