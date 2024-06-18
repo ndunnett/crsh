@@ -1,20 +1,27 @@
 use std::io::Write;
 use std::path::{Path, PathBuf};
-use std::process::Command;
 
+mod builtin;
 mod common_env;
+mod executing;
 mod io_descriptors;
+mod parsing;
 
 pub use common_env::*;
 pub use io_descriptors::*;
+
+#[derive(Default, Clone)]
+pub struct IOContext {
+    pub input: Input,
+    pub output: Output,
+    pub error: Error,
+}
 
 #[derive(Default)]
 pub struct Shell {
     pub env: CommonEnv,
     pub exit_code: i32,
-    pub input: Input,
-    pub output: Output,
-    pub error: Error,
+    pub io: IOContext,
 }
 
 impl Shell {
@@ -22,44 +29,17 @@ impl Shell {
         Default::default()
     }
 
-    pub fn eprint<S: AsRef<str>>(&mut self, msg: S) {
-        let _ = self.error.write_all(msg.as_ref().as_bytes());
-    }
-
-    pub fn eprintln<S: AsRef<str>>(&mut self, msg: S) {
-        self.eprint(format!("{}\n", msg.as_ref()));
-    }
-
-    pub fn print<S: AsRef<str>>(&mut self, msg: S) {
-        let _ = self.output.write_all(msg.as_ref().as_bytes());
-    }
-
-    pub fn println<S: AsRef<str>>(&mut self, msg: S) {
-        self.print(format!("{}\n", msg.as_ref()));
-    }
-
-    pub fn launch(&mut self, keyword: &str, args: &[&str]) -> i32 {
-        let args = args.iter().map(|s| s.to_string()).collect::<Vec<_>>();
-
-        match Command::new(keyword)
-            .stdin(self.input.clone())
-            .stdout(self.output.clone())
-            .stderr(self.error.clone())
-            .args(&args)
-            .spawn()
-        {
-            Ok(mut c) => match c.wait() {
-                Ok(status) => status.code().unwrap_or(-1),
-                Err(e) => {
-                    self.eprintln(format!("crsh: {e}"));
-                    -1
-                }
-            },
+    pub fn interpret(&mut self, input: &str) {
+        self.exit_code = match parsing::Parser::new(input).parse(0) {
+            Ok(ast) => {
+                self.println(format!("{ast:#?}\n"));
+                executing::execute(self, &self.io.clone(), &ast)
+            }
             Err(e) => {
-                self.eprintln(format!("crsh: {e}"));
+                self.eprintln(format!("crsh: parsing error: {e}"));
                 -1
             }
-        }
+        };
     }
 
     pub fn find_on_path<P>(&self, keyword: P) -> Option<PathBuf>
@@ -79,5 +59,21 @@ impl Shell {
                 }
             })
             .next()
+    }
+
+    pub fn eprint<S: AsRef<str>>(&mut self, msg: S) {
+        let _ = self.io.error.write_all(msg.as_ref().as_bytes());
+    }
+
+    pub fn eprintln<S: AsRef<str>>(&mut self, msg: S) {
+        self.eprint(format!("{}\n", msg.as_ref()));
+    }
+
+    pub fn print<S: AsRef<str>>(&mut self, msg: S) {
+        let _ = self.io.output.write_all(msg.as_ref().as_bytes());
+    }
+
+    pub fn println<S: AsRef<str>>(&mut self, msg: S) {
+        self.print(format!("{}\n", msg.as_ref()));
     }
 }

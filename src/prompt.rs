@@ -5,7 +5,6 @@ use std::time::Duration;
 use crossterm::event::{self, KeyCode, KeyModifiers};
 use crossterm::{cursor, queue, terminal};
 
-use crate::interpreter::interpret;
 use crate::shell::Shell;
 
 struct PromptStyle<'a> {
@@ -52,7 +51,7 @@ impl<'a> Prompt<'a> {
         loop {
             match self.readline() {
                 Ok(PromptCapture::String(input)) => {
-                    self.shell.exit_code = interpret(self.shell, &input);
+                    self.shell.interpret(&input);
                 }
                 Ok(PromptCapture::Kill) => {
                     // todo: ctrl-c unimplemented
@@ -75,9 +74,42 @@ impl<'a> Prompt<'a> {
         Ok(())
     }
 
+    fn prompt(&self) -> String {
+        let pwd = &self.shell.env.pwd;
+        let home = &self.shell.env.home;
+
+        let current_dir = if pwd.starts_with(home) {
+            pwd.replacen(home, "~", 1)
+        } else {
+            pwd.clone()
+        };
+
+        let colour = match self.shell.exit_code {
+            0 => self.style.colour_success,
+            _ => self.style.colour_fail,
+        };
+
+        format!(
+            "{}{}\x1b[m {}{}{}\x1b[m ",
+            self.style.path_decoration,
+            current_dir,
+            self.style.symbol_decoration,
+            colour,
+            self.shell.env.ps1
+        )
+    }
+
+    fn post_read(&mut self) -> Result<(), io::Error> {
+        println!();
+        queue!(self.shell.io.output, cursor::MoveToColumn(0))?;
+        self.shell.io.output.flush()?;
+        terminal::disable_raw_mode()?;
+        Ok(())
+    }
+
     fn readline(&mut self) -> Result<PromptCapture, io::Error> {
         terminal::enable_raw_mode()?;
-        queue!(self.shell.output, terminal::EnableLineWrap)?;
+        queue!(self.shell.io.output, terminal::EnableLineWrap)?;
         let mut buffer: Vec<char> = Vec::new();
         let mut cursor_index: usize = 0;
         let mut history_offset: usize = 0;
@@ -102,14 +134,14 @@ impl<'a> Prompt<'a> {
                     Ordering::Less => {
                         if output_rows > taken_rows {
                             queue!(
-                                self.shell.output,
+                                self.shell.io.output,
                                 terminal::ScrollUp(output_rows - last_output_rows)
                             )?;
 
                             taken_rows = output_rows;
                         } else {
                             queue!(
-                                self.shell.output,
+                                self.shell.io.output,
                                 cursor::MoveToNextLine(output_rows - last_output_rows)
                             )?;
                         }
@@ -118,7 +150,7 @@ impl<'a> Prompt<'a> {
                     }
                     Ordering::Greater => {
                         queue!(
-                            self.shell.output,
+                            self.shell.io.output,
                             cursor::MoveToPreviousLine(last_output_rows - output_rows)
                         )?;
 
@@ -129,13 +161,13 @@ impl<'a> Prompt<'a> {
 
                 if output_rows > 0 {
                     queue!(
-                        self.shell.output,
+                        self.shell.io.output,
                         cursor::MoveToPreviousLine(output_rows),
                         terminal::Clear(terminal::ClearType::FromCursorDown)
                     )?;
                 } else {
                     queue!(
-                        self.shell.output,
+                        self.shell.io.output,
                         cursor::MoveToColumn(0),
                         terminal::Clear(terminal::ClearType::FromCursorDown)
                     )?;
@@ -144,7 +176,7 @@ impl<'a> Prompt<'a> {
                 print!("{output}");
             }
 
-            self.shell.output.flush()?;
+            self.shell.io.output.flush()?;
 
             if event::poll(Duration::from_millis(500))? {
                 if let event::Event::Key(key) = event::read()? {
@@ -231,38 +263,5 @@ impl<'a> Prompt<'a> {
         }
 
         Ok(PromptCapture::String(String::from_iter(buffer)))
-    }
-
-    fn post_read(&mut self) -> Result<(), io::Error> {
-        println!();
-        queue!(self.shell.output, cursor::MoveToColumn(0))?;
-        self.shell.output.flush()?;
-        terminal::disable_raw_mode()?;
-        Ok(())
-    }
-
-    fn prompt(&self) -> String {
-        let pwd = &self.shell.env.pwd;
-        let home = &self.shell.env.home;
-
-        let current_dir = if pwd.starts_with(home) {
-            pwd.replacen(home, "~", 1)
-        } else {
-            pwd.clone()
-        };
-
-        let colour = match self.shell.exit_code {
-            0 => self.style.colour_success,
-            _ => self.style.colour_fail,
-        };
-
-        format!(
-            "{}{}\x1b[m {}{}{}\x1b[m ",
-            self.style.path_decoration,
-            current_dir,
-            self.style.symbol_decoration,
-            colour,
-            self.shell.env.ps1
-        )
     }
 }

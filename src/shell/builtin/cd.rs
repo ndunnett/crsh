@@ -1,7 +1,7 @@
 use std::env;
 use std::path::Path;
 
-use crate::builtin::Builtin;
+use super::Builtin;
 use crate::shell::Shell;
 
 enum CdOption {

@@ -1,6 +1,6 @@
 use std::process::exit;
 
-use crate::builtin::Builtin;
+use super::Builtin;
 use crate::shell::Shell;
 
 pub struct Exit {

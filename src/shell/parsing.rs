@@ -31,9 +31,9 @@ enum BindingPower {
 impl<'a> Token<'a> {
     fn bp(&self, _is_prefix: bool) -> BindingPower {
         match self {
-            Token::DoubleAnd => BindingPower::Infix(2, 2),
-            Token::DoublePipe => BindingPower::Infix(2, 2),
-            Token::Pipe => BindingPower::Infix(1, 1),
+            Token::DoubleAnd => BindingPower::Infix(3, 4),
+            Token::DoublePipe => BindingPower::Infix(3, 4),
+            Token::Pipe => BindingPower::Infix(1, 2),
             _ => BindingPower::None,
         }
     }

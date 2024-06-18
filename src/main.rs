@@ -1,7 +1,5 @@
 use std::process::ExitCode;
 
-mod builtin;
-mod interpreter;
 mod prompt;
 mod shell;
 
