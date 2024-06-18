@@ -25,7 +25,7 @@ impl Shell {
         self.exit_code = match parsing::Parser::new(input).parse(0) {
             Ok(ast) => {
                 self.io.println(format!("{ast:#?}\n"));
-                execution::execute(self, &mut self.io.clone(), &ast)
+                self.execute(&mut self.io.clone(), &ast)
             }
             Err(e) => {
                 self.io.eprintln(format!("crsh: parsing error: {e}"));

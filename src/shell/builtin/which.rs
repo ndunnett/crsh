@@ -1,4 +1,4 @@
-use super::{get_builder, Builtin};
+use super::Builtin;
 use crate::shell::{IOContext, Shell};
 
 pub struct Which {
@@ -12,7 +12,7 @@ impl Builtin for Which {
     }
 
     fn run(&self, sh: &mut Shell, io: &mut IOContext) -> i32 {
-        if get_builder(&self.keyword).is_some() {
+        if Shell::get_builtin_builder(&self.keyword).is_some() {
             io.println(format!("{}: shell builtin", self.keyword));
         } else if let Some(path) = sh.find_on_path(&self.keyword) {
             io.println(path.display().to_string());
