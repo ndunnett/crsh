@@ -2,7 +2,7 @@ use std::env;
 use std::path::Path;
 
 use super::Builtin;
-use crate::shell::Shell;
+use crate::shell::{IOContext, Shell};
 
 enum CdOption {
     L,
@@ -46,7 +46,7 @@ impl Builtin for Cd {
         Ok(Box::new(Self { option, path }))
     }
 
-    fn run(&self, sh: &mut Shell) -> i32 {
+    fn run(&self, sh: &mut Shell, io: &mut IOContext) -> i32 {
         let path = match (&self.path, &self.option) {
             (None, CdOption::Back) => sh.env.oldpwd.clone(),
             (None, _) => sh.env.home.clone(),
@@ -62,14 +62,14 @@ impl Builtin for Cd {
         };
 
         if !Path::new(&path).is_dir() {
-            sh.eprintln(format!(
+            io.eprintln(format!(
                 "cd: cannot access '{path}': No such file or directory"
             ));
             return -1;
         }
 
         if let Err(e) = env::set_current_dir(&path) {
-            sh.eprintln(format!("cd: cannot access '{path}': {e}"));
+            io.eprintln(format!("cd: cannot access '{path}': {e}"));
             -1
         } else {
             let pwd = env::current_dir()

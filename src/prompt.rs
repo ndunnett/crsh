@@ -65,7 +65,7 @@ impl<'a> Prompt<'a> {
                     continue;
                 }
                 Err(e) => {
-                    self.shell.eprintln(format!("crsh: {e}"));
+                    self.shell.io.eprintln(format!("crsh: {e}"));
                     self.shell.exit_code = -1;
                 }
             }

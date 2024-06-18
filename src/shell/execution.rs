@@ -4,7 +4,7 @@ use super::builtin;
 use super::parsing::Command;
 use super::{IOContext, Shell};
 
-pub fn execute(sh: &mut Shell, io: &IOContext, ast: &Command) -> i32 {
+pub fn execute(sh: &mut Shell, io: &mut IOContext, ast: &Command) -> i32 {
     match ast {
         Command::Empty => 0,
         Command::Simple { keyword, args } => execute_simple(sh, io, keyword, args),
@@ -18,12 +18,12 @@ pub fn execute(sh: &mut Shell, io: &IOContext, ast: &Command) -> i32 {
     }
 }
 
-fn execute_simple(sh: &mut Shell, io: &IOContext, keyword: &str, args: &[&str]) -> i32 {
+fn execute_simple(sh: &mut Shell, io: &mut IOContext, keyword: &str, args: &[&str]) -> i32 {
     if let Some(builder) = builtin::get_builder(keyword) {
         match builder(args) {
-            Ok(builtin) => builtin.run(sh),
+            Ok(builtin) => builtin.run(sh, io),
             Err(e) => {
-                sh.eprintln(e);
+                io.eprintln(e);
                 -1
             }
         }
@@ -41,22 +41,22 @@ fn execute_simple(sh: &mut Shell, io: &IOContext, keyword: &str, args: &[&str]) 
             Ok(mut c) => match c.wait() {
                 Ok(status) => status.code().unwrap_or(-1),
                 Err(e) => {
-                    sh.eprintln(format!("crsh: {e}"));
+                    io.eprintln(format!("crsh: {e}"));
                     -1
                 }
             },
             Err(e) => {
-                sh.eprintln(format!("crsh: {e}"));
+                io.eprintln(format!("crsh: {e}"));
                 -1
             }
         }
     } else {
-        sh.eprintln(format!("crsh: command not found: {keyword}"));
+        io.eprintln(format!("crsh: command not found: {keyword}"));
         -1
     }
 }
 
-fn execute_and(sh: &mut Shell, io: &IOContext, left: &Command, right: &Command) -> i32 {
+fn execute_and(sh: &mut Shell, io: &mut IOContext, left: &Command, right: &Command) -> i32 {
     let left_result = execute(sh, io, left);
 
     if left_result == 0 {
@@ -66,7 +66,7 @@ fn execute_and(sh: &mut Shell, io: &IOContext, left: &Command, right: &Command) 
     }
 }
 
-fn execute_or(sh: &mut Shell, io: &IOContext, left: &Command, right: &Command) -> i32 {
+fn execute_or(sh: &mut Shell, io: &mut IOContext, left: &Command, right: &Command) -> i32 {
     let left_result = execute(sh, io, left);
 
     if left_result != 0 {
@@ -76,19 +76,19 @@ fn execute_or(sh: &mut Shell, io: &IOContext, left: &Command, right: &Command) -
     }
 }
 
-fn execute_pipeline(sh: &mut Shell, io: &IOContext, left: &Command, right: &Command) -> i32 {
-    let left_io = IOContext {
+fn execute_pipeline(sh: &mut Shell, io: &mut IOContext, left: &Command, right: &Command) -> i32 {
+    let mut left_io = IOContext {
         input: io.input.clone(),
         output: io.output.clone(),
         error: io.error.clone(),
     };
 
-    let right_io = IOContext {
+    let mut right_io = IOContext {
         input: io.input.clone(),
         output: io.output.clone(),
         error: io.error.clone(),
     };
 
-    let _ = execute(sh, &left_io, left);
-    execute(sh, &right_io, right)
+    let _ = execute(sh, &mut left_io, left);
+    execute(sh, &mut right_io, right)
 }
