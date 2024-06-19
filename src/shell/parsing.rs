@@ -47,11 +47,13 @@ impl<'a> Token<'a> {
 pub enum Command<'a> {
     Empty,
     Simple {
-        keyword: &'a str,
         args: Vec<&'a str>,
     },
-    Logical {
-        and: bool,
+    And {
+        left: Box<Command<'a>>,
+        right: Box<Command<'a>>,
+    },
+    Or {
         left: Box<Command<'a>>,
         right: Box<Command<'a>>,
     },
@@ -98,20 +100,21 @@ impl<'a> Parser<'a> {
         while let Some(Ok(token)) = self.peek() {
             match (&ast, token.bp(is_prefix)) {
                 (Command::Empty, BindingPower::None) => {
-                    ast = match token {
-                        Token::Word(keyword) => {
-                            self.next();
-                            let mut args = Vec::new();
-
-                            while let Some(Ok(Token::Word(arg))) = self.peek() {
-                                args.push(arg);
+                    if matches!(token, Token::Word(_)) {
+                        let args = std::iter::from_fn(|| {
+                            if let Some(Ok(Token::Word(arg))) = self.peek() {
                                 self.next();
+                                Some(arg)
+                            } else {
+                                None
                             }
+                        })
+                        .collect::<Vec<_>>();
 
-                            Command::Simple { keyword, args }
-                        }
-                        t => return Err(format!("bad token: {t:?}")),
-                    };
+                        ast = Command::Simple { args };
+                    } else {
+                        return Err(format!("bad token: {token:?}"));
+                    }
                 }
                 // (Command::Empty, BindingPower::Prefix(right_bp)) => {
                 //     self.next();
@@ -143,13 +146,11 @@ impl<'a> Parser<'a> {
                     self.next();
 
                     ast = match token {
-                        Token::DoubleAnd => Command::Logical {
-                            and: true,
+                        Token::DoubleAnd => Command::And {
                             left: Box::new(ast),
                             right: Box::new(self.parse(right_bp)?),
                         },
-                        Token::DoublePipe => Command::Logical {
-                            and: false,
+                        Token::DoublePipe => Command::Or {
                             left: Box::new(ast),
                             right: Box::new(self.parse(right_bp)?),
                         },

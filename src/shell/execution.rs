@@ -8,8 +8,9 @@ impl Shell {
     pub fn execute(&mut self, ctx: Option<IOContext>, ast: &Command) -> i32 {
         match ast {
             Command::Empty => 0,
-            Command::Simple { keyword, args } => self.execute_simple(ctx, keyword, args),
-            Command::Logical { and, left, right } => self.execute_logical(ctx, *and, left, right),
+            Command::Simple { args } => self.execute_simple(ctx, args),
+            Command::And { left, right } => self.execute_logical(ctx, true, left, right),
+            Command::Or { left, right } => self.execute_logical(ctx, false, left, right),
             Command::Pipeline { cmds } => self.execute_pipeline(ctx, cmds),
             Command::List { cmds } => self.execute_list(ctx, cmds),
             // _ => {
@@ -19,11 +20,14 @@ impl Shell {
         }
     }
 
-    fn execute_simple(&mut self, ctx: Option<IOContext>, keyword: &str, args: &[&str]) -> i32 {
+    fn execute_simple(&mut self, ctx: Option<IOContext>, args: &[&str]) -> i32 {
         let mut io = match ctx {
             Some(ctx) => ctx,
             None => self.io.clone(),
         };
+
+        let keyword = args[0];
+        let args = &args[1..args.len()];
 
         if let Some(builder) = Self::get_builtin_builder(keyword) {
             match builder(args) {
