@@ -5,25 +5,13 @@ use std::time::Duration;
 use crossterm::event::{self, KeyCode, KeyModifiers};
 use crossterm::{cursor, queue, terminal};
 
+mod history;
+mod style;
+
+use history::*;
+use style::*;
+
 use crate::shell::Shell;
-
-struct PromptStyle<'a> {
-    path_decoration: &'a str,
-    symbol_decoration: &'a str,
-    colour_success: &'a str,
-    colour_fail: &'a str,
-}
-
-impl Default for PromptStyle<'_> {
-    fn default() -> Self {
-        Self {
-            path_decoration: "\x1b[2m",
-            symbol_decoration: "\x1b[1m",
-            colour_success: "\x1b[32m",
-            colour_fail: "\x1b[31m",
-        }
-    }
-}
 
 enum PromptCapture {
     String(String),
@@ -35,15 +23,15 @@ enum PromptCapture {
 pub struct Prompt<'a> {
     shell: &'a mut Shell,
     style: PromptStyle<'a>,
-    history: Vec<Vec<char>>,
+    history: PromptHistory,
 }
 
 impl<'a> Prompt<'a> {
     pub fn new(shell: &'a mut Shell) -> Self {
         Self {
             shell,
-            style: Default::default(),
-            history: Default::default(),
+            style: PromptStyle::new(),
+            history: PromptHistory::new(),
         }
     }
 
@@ -112,7 +100,6 @@ impl<'a> Prompt<'a> {
         queue!(self.shell.io.output, terminal::EnableLineWrap)?;
         let mut buffer: Vec<char> = Vec::new();
         let mut cursor_index: usize = 0;
-        let mut history_offset: usize = 0;
         let mut output_rows = 0;
         let mut taken_rows = output_rows;
         let mut last_output_rows = output_rows;
@@ -122,7 +109,6 @@ impl<'a> Prompt<'a> {
 
             if rows > 0 {
                 let ps1 = self.prompt();
-                let buffer_string = buffer.iter().collect::<String>();
                 let ps1_len = strip_ansi_escapes::strip_str(&ps1).len();
                 output_rows = ((ps1_len + buffer.len()).div_ceil(cols as usize)) as u16 - 1;
 
@@ -169,7 +155,7 @@ impl<'a> Prompt<'a> {
                     )?;
                 }
 
-                print!("{ps1}{buffer_string}");
+                print!("{ps1}{}", buffer.iter().collect::<String>());
 
                 queue!(
                     self.shell.io.output,
@@ -193,26 +179,15 @@ impl<'a> Prompt<'a> {
                             }
                         }
                         (KeyModifiers::NONE, KeyCode::Up) => {
-                            if history_offset < self.history.len() {
-                                history_offset += 1;
-                                buffer
-                                    .clone_from(&self.history[self.history.len() - history_offset]);
+                            if let Some(buf) = self.history.back() {
+                                buffer = buf;
                                 cursor_index = buffer.len();
                             }
                         }
                         (KeyModifiers::NONE, KeyCode::Down) => {
-                            if history_offset > 0 {
-                                history_offset -= 1;
-
-                                if history_offset > 0 {
-                                    buffer.clone_from(
-                                        &self.history[self.history.len() - history_offset],
-                                    );
-                                    cursor_index = buffer.len();
-                                } else {
-                                    buffer.clear();
-                                    cursor_index = 0;
-                                }
+                            if let Some(buf) = self.history.forward() {
+                                buffer = buf;
+                                cursor_index = buffer.len();
                             }
                         }
                         (KeyModifiers::NONE, KeyCode::Backspace) => {
@@ -222,7 +197,7 @@ impl<'a> Prompt<'a> {
                             }
                         }
                         (KeyModifiers::NONE, KeyCode::Delete) => {
-                            if cursor_index != buffer.len() {
+                            if cursor_index < buffer.len() {
                                 buffer.remove(cursor_index);
                             }
                         }
@@ -259,7 +234,7 @@ impl<'a> Prompt<'a> {
 
         self.post_read()?;
 
-        if !buffer.is_empty() && self.history.last() != Some(&buffer) {
+        if !buffer.is_empty() {
             self.history.push(buffer.clone());
         }
 

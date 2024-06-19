@@ -109,7 +109,7 @@ impl<'a> Parser<'a> {
                                 None
                             }
                         })
-                        .collect::<Vec<_>>();
+                        .collect();
 
                         ast = Command::Simple { args };
                     } else {
