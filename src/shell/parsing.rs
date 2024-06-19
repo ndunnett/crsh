@@ -17,7 +17,10 @@ enum Token<'a> {
     #[token("&&", priority = 10)]
     DoubleAnd,
 
-    #[regex(r"[^\s\|&]+", priority = 1, callback = |lex| lex.slice())]
+    #[token(";", priority = 10)]
+    Semicolon,
+
+    #[regex(r"[^\s\|&;]+", priority = 1, callback = |lex| lex.slice())]
     Word(&'a str),
 }
 
@@ -31,9 +34,10 @@ enum BindingPower {
 impl<'a> Token<'a> {
     fn bp(&self, _is_prefix: bool) -> BindingPower {
         match self {
-            Token::DoubleAnd => BindingPower::Infix(3, 4),
-            Token::DoublePipe => BindingPower::Infix(5, 6),
-            Token::Pipe => BindingPower::Infix(1, 2),
+            Token::DoublePipe => BindingPower::Infix(7, 8),
+            Token::DoubleAnd => BindingPower::Infix(5, 6),
+            Token::Pipe => BindingPower::Infix(3, 4),
+            Token::Semicolon => BindingPower::Infix(1, 2),
             _ => BindingPower::None,
         }
     }
@@ -52,6 +56,9 @@ pub enum Command<'a> {
         right: Box<Command<'a>>,
     },
     Pipeline {
+        cmds: Vec<Command<'a>>,
+    },
+    List {
         cmds: Vec<Command<'a>>,
     },
 }
@@ -155,6 +162,16 @@ impl<'a> Parser<'a> {
 
                             cmds.push(self.parse(right_bp)?);
                             Command::Pipeline { cmds }
+                        }
+                        Token::Semicolon => {
+                            let mut cmds = if let Command::List { cmds: next_cmds } = ast {
+                                next_cmds
+                            } else {
+                                vec![ast]
+                            };
+
+                            cmds.push(self.parse(right_bp)?);
+                            Command::List { cmds }
                         }
                         t => return Err(format!("bad token: {t:?}")),
                     };

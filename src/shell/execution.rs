@@ -11,6 +11,7 @@ impl Shell {
             Command::Simple { keyword, args } => self.execute_simple(ctx, keyword, args),
             Command::Logical { and, left, right } => self.execute_logical(ctx, *and, left, right),
             Command::Pipeline { cmds } => self.execute_pipeline(ctx, cmds),
+            Command::List { cmds } => self.execute_list(ctx, cmds),
             // _ => {
             //     sh.eprintln("crsh: unimplemented functionality");
             //     -1
@@ -131,5 +132,12 @@ impl Shell {
             }
             None => 0,
         }
+    }
+
+    fn execute_list(&mut self, ctx: Option<IOContext>, cmds: &[Command]) -> i32 {
+        cmds.iter()
+            .map(|cmd| self.execute(ctx.clone(), cmd))
+            .last()
+            .unwrap_or(0)
     }
 }

@@ -6,14 +6,13 @@ Crappy Rust SHell. Basic implementation of a unix shell written in Rust, not mea
 ## Features
 
 * Functional prompt
-* Command launching, piping, and logical grouping
+* Command launching, piping, logical grouping, and lists
 * Basic builtin commands `cd`, `which`, `exit`
 * Non-interactive mode
 * Prompt history
 
 ## Todo
 
-* Command lists
 * Flesh out builtins
 * Fully functional IO redirection
 * History persistence
