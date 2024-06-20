@@ -48,13 +48,13 @@ impl Builtin for Cd {
 
     fn run(&self, sh: &mut Shell, io: &mut IOContext) -> i32 {
         let path = match (&self.path, &self.option) {
-            (None, CdOption::Back) => sh.env.oldpwd.clone(),
-            (None, _) => sh.env.home.clone(),
+            (None, CdOption::Back) => sh.env.oldpwd.to_string_lossy().to_string(),
+            (None, _) => sh.env.home.to_string_lossy().to_string(),
             // -L and -P options not yet implemented
             // todo: https://pubs.opengroup.org/onlinepubs/9699919799/utilities/cd.html
             (Some(s), _) => {
                 if s.starts_with('~') {
-                    s.replacen('~', &sh.env.home, 1)
+                    s.replacen('~', &sh.env.home.to_string_lossy(), 1)
                 } else {
                     s.into()
                 }
@@ -72,10 +72,7 @@ impl Builtin for Cd {
             io.eprintln(format!("cd: cannot access '{path}': {e}"));
             -1
         } else {
-            let pwd = env::current_dir()
-                .map(|p| p.display().to_string())
-                .unwrap_or(path);
-
+            let pwd = env::current_dir().unwrap_or_else(|_| path.into());
             env::set_var("OLDPWD", &sh.env.pwd);
             sh.env.oldpwd.clone_from(&sh.env.pwd);
             sh.env.pwd = pwd;

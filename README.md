@@ -9,13 +9,12 @@ Crappy Rust SHell. Basic implementation of a unix shell written in Rust, not mea
 * Command launching, piping, logical grouping, and lists
 * Basic builtin commands `cd`, `which`, `exit`
 * Non-interactive mode
-* Prompt history
+* Persistent prompt history
 
 ## Todo
 
 * Flesh out builtins
 * Fully functional IO redirection
-* History persistence
 * Set/unset shell options
 * Setting/reading env vars
 * Bash-esque variable expansion

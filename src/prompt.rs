@@ -26,12 +26,22 @@ pub struct Prompt<'a> {
     history: PromptHistory,
 }
 
+impl Drop for Prompt<'_> {
+    fn drop(&mut self) {
+        let _ = self
+            .history
+            .save(self.shell.config_filepath(&self.shell.config.history_file));
+    }
+}
+
 impl<'a> Prompt<'a> {
     pub fn new(shell: &'a mut Shell) -> Self {
+        let history_file = shell.config_filepath(&shell.config.history_file);
+
         Self {
             shell,
             style: PromptStyle::new(),
-            history: PromptHistory::new(),
+            history: PromptHistory::new(history_file),
         }
     }
 
@@ -63,8 +73,8 @@ impl<'a> Prompt<'a> {
     }
 
     fn prompt(&self) -> String {
-        let pwd = &self.shell.env.pwd;
-        let home = &self.shell.env.home;
+        let pwd = &self.shell.env.pwd.to_string_lossy().to_string();
+        let home = &self.shell.env.home.to_string_lossy().to_string();
 
         let current_dir = if pwd.starts_with(home) {
             pwd.replacen(home, "~", 1)

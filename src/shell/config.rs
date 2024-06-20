@@ -9,6 +9,7 @@ pub struct ShellConfig {
     pub start_path: String,
     pub args: Vec<String>,
     pub mode: ShellMode,
+    pub history_file: String,
 }
 
 impl Default for ShellConfig {
@@ -17,6 +18,7 @@ impl Default for ShellConfig {
             start_path: "/".into(),
             args: Vec::new(),
             mode: ShellMode::Interactive,
+            history_file: ".crsh-history".into(),
         }
     }
 }

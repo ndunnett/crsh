@@ -1,6 +1,6 @@
-use std::env;
 use std::path::{Path, PathBuf};
 use std::process::{exit, ExitCode};
+use std::env;
 
 mod builtin;
 mod common_env;
@@ -148,5 +148,11 @@ impl Shell {
                 }
             })
             .next()
+    }
+
+    pub fn config_filepath<S: AsRef<Path>>(&self, filename: S) -> PathBuf {
+        let mut path = self.env.config.clone();
+        path.push(filename);
+        path
     }
 }
