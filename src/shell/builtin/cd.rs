@@ -1,7 +1,7 @@
 use std::env;
 use std::path::Path;
 
-use super::Builtin;
+use super::ImplementedBuiltin;
 use crate::shell::{IOContext, Shell};
 
 enum CdOption {
@@ -16,8 +16,8 @@ pub struct Cd {
     path: Option<String>,
 }
 
-impl Builtin for Cd {
-    fn build(args: &[&str]) -> Result<Box<dyn Builtin>, String> {
+impl ImplementedBuiltin for Cd {
+    fn build(args: &[&str]) -> Result<impl ImplementedBuiltin, String> {
         let mut option = CdOption::None;
         let mut path = None;
 
@@ -43,7 +43,7 @@ impl Builtin for Cd {
             _ => return Err("cd: too many arguments".to_string()),
         }
 
-        Ok(Box::new(Self { option, path }))
+        Ok(Cd { option, path })
     }
 
     fn run(&self, sh: &mut Shell, io: &mut IOContext) -> i32 {

@@ -1,6 +1,7 @@
 use std::io;
 use std::process;
 
+use super::builtin::Builtin;
 use super::parsing::Command;
 use super::{IOContext, Shell};
 
@@ -29,9 +30,9 @@ impl Shell {
         let keyword = args[0];
         let args = &args[1..args.len()];
 
-        if let Some(builder) = Self::get_builtin_builder(keyword) {
-            match builder(args) {
-                Ok(builtin) => builtin.run(self, &mut io),
+        if let Some(builtin) = Builtin::get(keyword) {
+            match builtin.run(self, &mut io, args) {
+                Ok(code) => code,
                 Err(e) => {
                     io.eprintln(e);
                     -1
