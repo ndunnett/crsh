@@ -1,0 +1,16 @@
+[package]
+name = "crsh_core"
+publish = false
+
+edition.workspace = true
+homepage.workspace = true
+license.workspace = true
+readme.workspace = true
+repository.workspace = true
+version.workspace = true
+
+[dependencies]
+crossterm = { workspace = true }
+logos = { workspace = true }
+os_pipe = { workspace = true }
+strip-ansi-escapes = { workspace = true }

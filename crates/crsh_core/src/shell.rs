@@ -1,6 +1,6 @@
+use std::env;
 use std::path::{Path, PathBuf};
 use std::process::{exit, ExitCode};
-use std::env;
 
 mod builtin;
 mod common_env;
@@ -131,10 +131,7 @@ impl Shell {
         };
     }
 
-    pub fn find_on_path<P>(&self, keyword: P) -> Option<PathBuf>
-    where
-        P: AsRef<Path>,
-    {
+    pub fn find_on_path<P: AsRef<Path>>(&self, keyword: P) -> Option<PathBuf> {
         self.env
             .path
             .iter()

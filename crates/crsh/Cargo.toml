@@ -1,0 +1,15 @@
+[package]
+name = "crsh"
+description = "Crappy Rust SHell. Basic implementation of a unix shell written in Rust, not meant to actually be used or taken seriously."
+categories = ["command-line-utilities"]
+keywords = ["shell", "unix"]
+
+edition.workspace = true
+homepage.workspace = true
+license.workspace = true
+readme.workspace = true
+repository.workspace = true
+version.workspace = true
+
+[dependencies]
+crsh_core = { workspace = true }

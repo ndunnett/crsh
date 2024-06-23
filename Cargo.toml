@@ -1,17 +1,30 @@
-[package]
-name = "crsh"
-description = "Crappy Rust SHell. Basic implementation of a unix shell written in Rust, not meant to actually be used or taken seriously."
+[workspace]
+default-members = ["crates/crsh"]
+members = ["crates/crsh", "crates/crsh_core"]
+resolver = "2"
+
+[workspace.package]
 version = "0.0.1"
 edition = "2021"
 readme = "README.md"
+license = "MIT"
 homepage = "https://github.com/ndunnett/crsh"
 repository = "https://github.com/ndunnett/crsh"
-license-file = "LICENSE"
-categories = ["command-line-utilities"]
-keywords = ["shell", "unix"]
 
-[dependencies]
+[workspace.dependencies]
+crsh_core = { path = "crates/crsh_core" }
+
 crossterm = "0.27"
-strip-ansi-escapes = "0.2.0"
 logos = "0.14.0"
 os_pipe = "1.2.0"
+strip-ansi-escapes = "0.2.0"
+
+[profile.dev]
+codegen-units = 1
+lto = "off"
+opt-level = 0
+
+[profile.release]
+lto = true
+opt-level = 3
+strip = true
