@@ -45,7 +45,7 @@ impl<'a> Prompt<'a> {
         }
     }
 
-    pub fn interactive_loop(&mut self) -> Result<(), ()> {
+    pub fn interactive_loop(&mut self) -> i32 {
         loop {
             match self.readline() {
                 Ok(PromptCapture::String(input)) => {
@@ -69,7 +69,7 @@ impl<'a> Prompt<'a> {
             }
         }
 
-        Ok(())
+        self.shell.exit_code
     }
 
     fn prompt(&self) -> String {
