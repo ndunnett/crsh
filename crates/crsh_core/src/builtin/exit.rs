@@ -1,7 +1,7 @@
 use std::process::exit;
 
 use super::ImplementedBuiltin;
-use crate::shell::{IOContext, Shell};
+use crate::{IOContext, Shell};
 
 pub struct Exit {
     code: i32,

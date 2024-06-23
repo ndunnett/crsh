@@ -153,15 +153,23 @@ dependencies = [
  "clap",
  "crossterm",
  "crsh_core",
+ "crsh_prompt",
 ]
 
 [[package]]
 name = "crsh_core"
 version = "0.0.1"
 dependencies = [
- "crossterm",
  "logos",
  "os_pipe",
+]
+
+[[package]]
+name = "crsh_prompt"
+version = "0.0.1"
+dependencies = [
+ "crossterm",
+ "crsh_core",
  "strip-ansi-escapes",
 ]
 

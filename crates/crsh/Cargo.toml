@@ -14,3 +14,4 @@ version.workspace = true
 clap = { workspace = true }
 crossterm = { workspace = true }
 crsh_core = { workspace = true }
+crsh_prompt = { workspace = true }

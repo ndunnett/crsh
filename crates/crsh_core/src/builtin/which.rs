@@ -1,5 +1,5 @@
 use super::{Builtin, ImplementedBuiltin};
-use crate::shell::{IOContext, Shell};
+use crate::{IOContext, Shell};
 
 pub struct Which {
     keyword: String,

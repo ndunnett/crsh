@@ -1,5 +1,5 @@
 [package]
-name = "crsh_core"
+name = "crsh_prompt"
 
 publish = false
 edition.workspace = true
@@ -10,5 +10,6 @@ repository.workspace = true
 version.workspace = true
 
 [dependencies]
-logos = { workspace = true }
-os_pipe = { workspace = true }
+crossterm = { workspace = true }
+crsh_core = { workspace = true }
+strip-ansi-escapes = { workspace = true }

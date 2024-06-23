@@ -1,11 +1,13 @@
 use std::env;
-use std::io;
+use std::fs;
+use std::io::{self, Read};
 use std::process::ExitCode;
 
 use clap::{Parser, ValueEnum};
 use crossterm::tty::IsTty;
 
-use crsh_core::*;
+use crsh_core::Shell;
+use crsh_prompt::Prompt;
 
 #[derive(Parser, Debug)]
 #[command(version = env!("VERSION"))]
@@ -71,6 +73,14 @@ impl ShellOption {
     }
 }
 
+#[derive(Clone, PartialEq)]
+pub enum ShellMode {
+    Interactive,
+    Read,
+    Command(String),
+    Script(String),
+}
+
 impl Cli {
     pub fn parse_shell_mode(&self) -> ShellMode {
         if self.stdin {
@@ -107,6 +117,44 @@ fn main() -> ExitCode {
 
     let cli = Cli::parse_from(args);
     let mode = cli.parse_shell_mode();
+    let mut sh = Shell::from(cli);
 
-    Shell::from(cli).main(mode)
+    match mode {
+        ShellMode::Interactive => {
+            if Prompt::new(&mut sh).interactive_loop() == 0 {
+                ExitCode::SUCCESS
+            } else {
+                ExitCode::FAILURE
+            }
+        }
+        ShellMode::Read => {
+            let mut input = String::new();
+
+            if io::stdin().read_to_string(&mut input).is_ok() && sh.interpret(&input) == 0 {
+                ExitCode::SUCCESS
+            } else {
+                ExitCode::FAILURE
+            }
+        }
+        ShellMode::Command(input) => {
+            if sh.interpret(&input) == 0 {
+                ExitCode::SUCCESS
+            } else {
+                ExitCode::FAILURE
+            }
+        }
+        ShellMode::Script(path) => match fs::read_to_string(&path) {
+            Ok(script) => {
+                if sh.interpret(&script) == 0 {
+                    ExitCode::SUCCESS
+                } else {
+                    ExitCode::FAILURE
+                }
+            }
+            Err(e) => {
+                eprintln!("crsh: failed to run script at \"{path}\": {e}");
+                ExitCode::FAILURE
+            }
+        },
+    }
 }

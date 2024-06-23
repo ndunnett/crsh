@@ -11,7 +11,7 @@ mod style;
 use history::*;
 use style::*;
 
-use crate::shell::Shell;
+use crsh_core::Shell;
 
 enum PromptCapture {
     String(String),

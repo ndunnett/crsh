@@ -2,7 +2,7 @@ use std::env;
 use std::path::Path;
 
 use super::ImplementedBuiltin;
-use crate::shell::{IOContext, Shell};
+use crate::{IOContext, Shell};
 
 enum CdOption {
     L,
