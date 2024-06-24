@@ -18,7 +18,7 @@ impl ImplementedBuiltin for Which {
             io.println(format!("{}: shell builtin", self.keyword));
         } else if let Some(path) = sh.find_on_path(&self.keyword) {
             io.println(path.display().to_string());
-        } else {
+        } else if !self.keyword.is_empty() {
             io.println(format!("{} not found", self.keyword));
         }
 

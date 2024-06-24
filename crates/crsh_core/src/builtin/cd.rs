@@ -1,10 +1,26 @@
 use std::env;
 use std::path::Path;
 
+use clap::Parser;
 use sysexits::ExitCode;
 
 use super::ImplementedBuiltin;
 use crate::{IOContext, Shell};
+
+#[derive(Parser)]
+#[group(multiple = false)]
+struct Cli {
+    /// Pathname of the new working directory
+    directory: Option<String>,
+
+    /// Handle the operand dot-dot logically
+    #[arg(short = 'L', group = "dotdot")]
+    logical: bool,
+
+    /// Handle the operand dot-dot physically
+    #[arg(short = 'P', group = "dotdot")]
+    physical: bool,
+}
 
 enum CdOption {
     L,
@@ -20,32 +36,31 @@ pub struct Cd {
 
 impl ImplementedBuiltin for Cd {
     fn build(args: &[&str]) -> Result<impl ImplementedBuiltin, String> {
-        let mut option = CdOption::None;
-        let mut path = None;
+        match Cli::try_parse_from(["cd"].iter().chain(args)) {
+            Ok(cli) => {
+                let mut option = CdOption::None;
+                let mut path = None;
 
-        match args.len() {
-            0 => {}
-            1 => match args.first() {
-                Some(&"-") => option = CdOption::Back,
-                Some(&"-L") => option = CdOption::L,
-                Some(&"-P") => option = CdOption::P,
-                Some(&arg) => path = Some(arg.to_string()),
-                None => {}
-            },
-            2 => {
-                match args.first() {
-                    Some(&"-L") => option = CdOption::L,
-                    Some(&"-P") => option = CdOption::P,
-                    Some(&arg) => return Err(format!("cd: bad argument: {arg}")),
-                    None => {}
-                };
+                if cli.logical {
+                    option = CdOption::L;
+                }
 
-                path = Some(args[1].to_string());
+                if cli.physical {
+                    option = CdOption::P;
+                }
+
+                if let Some(dir) = &cli.directory {
+                    if dir == "-" {
+                        option = CdOption::Back;
+                    } else {
+                        path = cli.directory;
+                    }
+                }
+
+                Ok(Cd { option, path })
             }
-            _ => return Err("cd: too many arguments".to_string()),
+            Err(e) => Err(e.to_string()),
         }
-
-        Ok(Cd { option, path })
     }
 
     fn run(&self, sh: &mut Shell, io: &mut IOContext) -> ExitCode {

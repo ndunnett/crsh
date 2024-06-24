@@ -161,6 +161,7 @@ dependencies = [
 name = "crsh_core"
 version = "0.0.1"
 dependencies = [
+ "clap",
  "logos",
  "os_pipe",
  "sysexits",
