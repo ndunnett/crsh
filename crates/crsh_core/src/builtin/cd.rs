@@ -1,6 +1,8 @@
 use std::env;
 use std::path::Path;
 
+use sysexits::ExitCode;
+
 use super::ImplementedBuiltin;
 use crate::{IOContext, Shell};
 
@@ -46,7 +48,7 @@ impl ImplementedBuiltin for Cd {
         Ok(Cd { option, path })
     }
 
-    fn run(&self, sh: &mut Shell, io: &mut IOContext) -> i32 {
+    fn run(&self, sh: &mut Shell, io: &mut IOContext) -> ExitCode {
         let path = match (&self.path, &self.option) {
             (None, CdOption::Back) => sh.env.oldpwd.to_string_lossy().to_string(),
             (None, _) => sh.env.home.to_string_lossy().to_string(),
@@ -65,18 +67,18 @@ impl ImplementedBuiltin for Cd {
             io.eprintln(format!(
                 "cd: cannot access '{path}': No such file or directory"
             ));
-            return -1;
+            return ExitCode::NoInput;
         }
 
         if let Err(e) = env::set_current_dir(&path) {
             io.eprintln(format!("cd: cannot access '{path}': {e}"));
-            -1
+            ExitCode::NoInput
         } else {
             let pwd = env::current_dir().unwrap_or_else(|_| path.into());
             env::set_var("OLDPWD", &sh.env.pwd);
             sh.env.oldpwd.clone_from(&sh.env.pwd);
             sh.env.pwd = pwd;
-            0
+            ExitCode::Ok
         }
     }
 }

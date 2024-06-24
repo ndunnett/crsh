@@ -12,3 +12,4 @@ version.workspace = true
 [dependencies]
 logos = { workspace = true }
 os_pipe = { workspace = true }
+sysexits = { workspace = true }

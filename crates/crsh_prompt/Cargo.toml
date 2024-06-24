@@ -13,3 +13,4 @@ version.workspace = true
 crossterm = { workspace = true }
 crsh_core = { workspace = true }
 strip-ansi-escapes = { workspace = true }
+sysexits = { workspace = true }

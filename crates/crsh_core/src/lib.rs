@@ -1,5 +1,7 @@
 use std::path::{Path, PathBuf};
 
+use sysexits::ExitCode;
+
 mod builtin;
 mod common_env;
 mod config;
@@ -11,16 +13,26 @@ pub use common_env::*;
 pub use config::*;
 pub use shell_io::*;
 
-#[derive(Default)]
 pub struct Shell {
     pub env: CommonEnv,
-    pub exit_code: i32,
+    pub exit_code: ExitCode,
     pub io: IOContext,
     pub config: ShellConfig,
 }
 
+impl Default for Shell {
+    fn default() -> Self {
+        Self {
+            env: CommonEnv::default(),
+            exit_code: ExitCode::Ok,
+            io: IOContext::default(),
+            config: ShellConfig::default(),
+        }
+    }
+}
+
 impl Shell {
-    pub fn interpret(&mut self, input: &str) -> i32 {
+    pub fn interpret(&mut self, input: &str) -> ExitCode {
         self.exit_code = match parsing::Parser::new(input).parse(0) {
             Ok(ast) => {
                 // self.io.println(format!("{ast:#?}\n"));
@@ -28,7 +40,7 @@ impl Shell {
             }
             Err(e) => {
                 self.io.eprintln(format!("crsh: parsing error: {e}"));
-                -1
+                ExitCode::DataErr
             }
         };
 

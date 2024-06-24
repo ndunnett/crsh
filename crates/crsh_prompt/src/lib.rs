@@ -4,6 +4,7 @@ use std::time::Duration;
 
 use crossterm::event::{self, KeyCode, KeyModifiers};
 use crossterm::{cursor, queue, terminal};
+use sysexits::ExitCode;
 
 mod history;
 mod style;
@@ -45,7 +46,7 @@ impl<'a> Prompt<'a> {
         }
     }
 
-    pub fn interactive_loop(&mut self) -> i32 {
+    pub fn interactive_loop(&mut self) -> ExitCode {
         loop {
             match self.readline() {
                 Ok(PromptCapture::String(input)) => {
@@ -64,7 +65,7 @@ impl<'a> Prompt<'a> {
                 }
                 Err(e) => {
                     self.shell.io.eprintln(format!("crsh: {e}"));
-                    self.shell.exit_code = -1;
+                    self.shell.exit_code = ExitCode::DataErr;
                 }
             }
         }
@@ -82,9 +83,10 @@ impl<'a> Prompt<'a> {
             pwd.clone()
         };
 
-        let colour = match self.shell.exit_code {
-            0 => self.style.colour_success,
-            _ => self.style.colour_fail,
+        let colour = if self.shell.exit_code.is_success() {
+            self.style.colour_success
+        } else {
+            self.style.colour_fail
         };
 
         format!(
@@ -221,19 +223,19 @@ impl<'a> Prompt<'a> {
                         (KeyModifiers::CONTROL, KeyCode::Char('c')) => {
                             print!("^C");
                             self.post_read()?;
-                            self.shell.exit_code = -1;
+                            self.shell.exit_code = ExitCode::DataErr;
                             return Ok(PromptCapture::Kill);
                         }
                         (KeyModifiers::CONTROL, KeyCode::Char('d')) => {
                             print!("^D");
                             self.post_read()?;
-                            self.shell.exit_code = -1;
+                            self.shell.exit_code = ExitCode::DataErr;
                             return Ok(PromptCapture::End);
                         }
                         (KeyModifiers::CONTROL, KeyCode::Char('z')) => {
                             print!("^Z");
                             self.post_read()?;
-                            self.shell.exit_code = -1;
+                            self.shell.exit_code = ExitCode::DataErr;
                             return Ok(PromptCapture::Suspend);
                         }
                         _ => (),

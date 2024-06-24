@@ -1,8 +1,10 @@
+use sysexits::ExitCode;
+
 use super::{IOContext, Shell};
 
 trait ImplementedBuiltin {
     fn build(args: &[&str]) -> Result<impl ImplementedBuiltin, String>;
-    fn run(&self, sh: &mut super::Shell, io: &mut super::IOContext) -> i32;
+    fn run(&self, sh: &mut Shell, io: &mut IOContext) -> ExitCode;
 }
 
 mod cd;
@@ -25,7 +27,12 @@ impl Builtin {
         }
     }
 
-    pub fn run(&self, sh: &mut Shell, io: &mut IOContext, args: &[&str]) -> Result<i32, String> {
+    pub fn run(
+        &self,
+        sh: &mut Shell,
+        io: &mut IOContext,
+        args: &[&str],
+    ) -> Result<ExitCode, String> {
         macro_rules! run_builtin {
             ($mod:ty) => {
                 Ok(<$mod>::build(args)?.run(sh, io))

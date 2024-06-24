@@ -154,6 +154,7 @@ dependencies = [
  "crossterm",
  "crsh_core",
  "crsh_prompt",
+ "sysexits",
 ]
 
 [[package]]
@@ -162,6 +163,7 @@ version = "0.0.1"
 dependencies = [
  "logos",
  "os_pipe",
+ "sysexits",
 ]
 
 [[package]]
@@ -171,6 +173,7 @@ dependencies = [
  "crossterm",
  "crsh_core",
  "strip-ansi-escapes",
+ "sysexits",
 ]
 
 [[package]]
@@ -397,6 +400,12 @@ dependencies = [
  "quote",
  "unicode-ident",
 ]
+
+[[package]]
+name = "sysexits"
+version = "0.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "aaeada5433f30b34f25f70784cfc22b05d06a32eaa7e598b1433ecffb27e9499"
 
 [[package]]
 name = "unicode-ident"

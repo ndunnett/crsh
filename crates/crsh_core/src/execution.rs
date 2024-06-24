@@ -1,14 +1,16 @@
 use std::io;
 use std::process;
 
+use sysexits::ExitCode;
+
 use super::builtin::Builtin;
 use super::parsing::Command;
 use super::{IOContext, Shell};
 
 impl Shell {
-    pub fn execute(&mut self, ctx: Option<IOContext>, ast: &Command) -> i32 {
+    pub fn execute(&mut self, ctx: Option<IOContext>, ast: &Command) -> ExitCode {
         match ast {
-            Command::Empty => 0,
+            Command::Empty => ExitCode::Ok,
             Command::Simple { args } => self.execute_simple(ctx, args),
             Command::And { left, right } => self.execute_logical(ctx, true, left, right),
             Command::Or { left, right } => self.execute_logical(ctx, false, left, right),
@@ -21,7 +23,7 @@ impl Shell {
         }
     }
 
-    fn execute_simple(&mut self, ctx: Option<IOContext>, args: &[&str]) -> i32 {
+    fn execute_simple(&mut self, ctx: Option<IOContext>, args: &[&str]) -> ExitCode {
         let mut io = match ctx {
             Some(ctx) => ctx,
             None => self.io.clone(),
@@ -35,7 +37,7 @@ impl Shell {
                 Ok(code) => code,
                 Err(e) => {
                     io.eprintln(e);
-                    -1
+                    ExitCode::Usage
                 }
             }
         } else if self.find_on_path(keyword).is_some() {
@@ -54,21 +56,25 @@ impl Shell {
 
             match child {
                 Ok(mut child) => match child.wait() {
-                    Ok(status) => status.code().unwrap_or(-1),
+                    Ok(status) => status
+                        .code()
+                        .unwrap_or(0)
+                        .try_into()
+                        .unwrap_or(ExitCode::Ok),
                     Err(e) => {
                         self.io.eprintln(format!("crsh: {e}"));
-                        -1
+                        ExitCode::OsErr
                     }
                 },
                 Err(e) => {
                     self.io.eprintln(format!("crsh: {e}"));
-                    -1
+                    ExitCode::OsErr
                 }
             }
         } else {
             self.io
                 .eprintln(format!("crsh: command not found: {keyword}"));
-            -1
+            ExitCode::Unavailable
         }
     }
 
@@ -78,17 +84,17 @@ impl Shell {
         and: bool,
         left: &Command,
         right: &Command,
-    ) -> i32 {
+    ) -> ExitCode {
         let left_result = self.execute(ctx.clone(), left);
 
-        if (left_result == 0) == and {
+        if (left_result == ExitCode::Ok) == and {
             self.execute(ctx, right)
         } else {
             left_result
         }
     }
 
-    fn execute_pipeline(&mut self, ctx: Option<IOContext>, cmds: &[Command]) -> i32 {
+    fn execute_pipeline(&mut self, ctx: Option<IOContext>, cmds: &[Command]) -> ExitCode {
         let io = match ctx {
             Some(ctx) => ctx,
             None => self.io.clone(),
@@ -126,23 +132,23 @@ impl Shell {
                 }
             };
 
-            Ok::<i32, io::Error>(self.execute(Some(new_ctx), cmd))
+            Ok::<ExitCode, io::Error>(self.execute(Some(new_ctx), cmd))
         });
 
         match results.last() {
             Some(Ok(code)) => code,
             Some(Err(e)) => {
                 self.io.eprintln(format!("crsh: {e}"));
-                -1
+                ExitCode::IoErr
             }
-            None => 0,
+            None => ExitCode::Ok,
         }
     }
 
-    fn execute_list(&mut self, ctx: Option<IOContext>, cmds: &[Command]) -> i32 {
+    fn execute_list(&mut self, ctx: Option<IOContext>, cmds: &[Command]) -> ExitCode {
         cmds.iter()
             .map(|cmd| self.execute(ctx.clone(), cmd))
             .last()
-            .unwrap_or(0)
+            .unwrap_or(ExitCode::Ok)
     }
 }

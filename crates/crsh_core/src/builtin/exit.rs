@@ -1,23 +1,28 @@
-use std::process::exit;
+use sysexits::ExitCode;
 
 use super::ImplementedBuiltin;
 use crate::{IOContext, Shell};
 
 pub struct Exit {
-    code: i32,
+    code: ExitCode,
 }
 
 impl ImplementedBuiltin for Exit {
     fn build(args: &[&str]) -> Result<impl ImplementedBuiltin, String> {
-        let code = args
+        let code: ExitCode = args
             .first()
-            .map(|arg| arg.parse::<i32>().unwrap_or(0))
-            .unwrap_or(0);
+            .map(|arg| {
+                arg.parse::<i32>()
+                    .unwrap_or(0)
+                    .try_into()
+                    .unwrap_or(ExitCode::Ok)
+            })
+            .unwrap_or(ExitCode::Ok);
 
         Ok(Self { code })
     }
 
-    fn run(&self, _sh: &mut Shell, _io: &mut IOContext) -> i32 {
-        exit(self.code)
+    fn run(&self, _sh: &mut Shell, _io: &mut IOContext) -> ExitCode {
+        self.code.exit()
     }
 }

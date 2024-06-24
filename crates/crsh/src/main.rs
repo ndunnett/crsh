@@ -1,10 +1,10 @@
 use std::env;
 use std::fs;
 use std::io::{self, Read};
-use std::process::ExitCode;
 
 use clap::{Parser, ValueEnum};
 use crossterm::tty::IsTty;
+use sysexits::ExitCode;
 
 use crsh_core::Shell;
 use crsh_prompt::Prompt;
@@ -120,40 +120,22 @@ fn main() -> ExitCode {
     let mut sh = Shell::from(cli);
 
     match mode {
-        ShellMode::Interactive => {
-            if Prompt::new(&mut sh).interactive_loop() == 0 {
-                ExitCode::SUCCESS
-            } else {
-                ExitCode::FAILURE
-            }
-        }
+        ShellMode::Interactive => Prompt::new(&mut sh).interactive_loop(),
         ShellMode::Read => {
             let mut input = String::new();
 
-            if io::stdin().read_to_string(&mut input).is_ok() && sh.interpret(&input) == 0 {
-                ExitCode::SUCCESS
+            if io::stdin().read_to_string(&mut input).is_ok() {
+                sh.interpret(&input)
             } else {
-                ExitCode::FAILURE
+                ExitCode::IoErr
             }
         }
-        ShellMode::Command(input) => {
-            if sh.interpret(&input) == 0 {
-                ExitCode::SUCCESS
-            } else {
-                ExitCode::FAILURE
-            }
-        }
+        ShellMode::Command(input) => sh.interpret(&input),
         ShellMode::Script(path) => match fs::read_to_string(&path) {
-            Ok(script) => {
-                if sh.interpret(&script) == 0 {
-                    ExitCode::SUCCESS
-                } else {
-                    ExitCode::FAILURE
-                }
-            }
+            Ok(script) => sh.interpret(&script),
             Err(e) => {
                 eprintln!("crsh: failed to run script at \"{path}\": {e}");
-                ExitCode::FAILURE
+                ExitCode::NoInput
             }
         },
     }
