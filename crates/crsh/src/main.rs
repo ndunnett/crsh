@@ -1,13 +1,12 @@
 use std::env;
 use std::fs;
-use std::io::{self, Read};
+use std::io::{self, IsTerminal, Read};
 
 use clap::{Parser, ValueEnum};
-use crossterm::tty::IsTty;
 use sysexits::ExitCode;
 
 use crsh_core::Shell;
-use crsh_prompt::Prompt;
+use crsh_repl::Prompt;
 
 #[derive(Parser, Debug)]
 #[command(version = env!("VERSION"))]
@@ -111,7 +110,7 @@ impl From<Cli> for Shell {
 fn main() -> ExitCode {
     let mut args = env::args().collect::<Vec<_>>();
 
-    if !io::stdin().is_tty() {
+    if !io::stdin().is_terminal() {
         args.push("--stdin".into());
     }
 
@@ -120,7 +119,7 @@ fn main() -> ExitCode {
     let mut sh = Shell::from(cli);
 
     match mode {
-        ShellMode::Interactive => Prompt::new(&mut sh).interactive_loop(),
+        ShellMode::Interactive => Prompt::new(&mut sh).repl(),
         ShellMode::Read => {
             let mut input = String::new();
 

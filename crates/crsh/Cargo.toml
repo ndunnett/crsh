@@ -12,7 +12,6 @@ version.workspace = true
 
 [dependencies]
 clap = { workspace = true }
-crossterm = { workspace = true }
 crsh_core = { workspace = true }
-crsh_prompt = { workspace = true }
+crsh_repl = { workspace = true }
 sysexits = { workspace = true }

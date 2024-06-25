@@ -11,6 +11,6 @@ version.workspace = true
 
 [dependencies]
 clap = { workspace = true }
-logos = { workspace = true }
-os_pipe = { workspace = true }
+logos = "0.14.0"
+os_pipe = "1.2.0"
 sysexits = { workspace = true }

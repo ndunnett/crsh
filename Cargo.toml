@@ -1,6 +1,6 @@
 [workspace]
 default-members = ["crates/crsh"]
-members = ["crates/crsh", "crates/crsh_core", "crates/crsh_prompt"]
+members = ["crates/*"]
 resolver = "2"
 
 [workspace.package]
@@ -13,13 +13,9 @@ repository = "https://github.com/ndunnett/crsh"
 
 [workspace.dependencies]
 crsh_core = { path = "crates/crsh_core" }
-crsh_prompt = { path = "crates/crsh_prompt" }
+crsh_repl = { path = "crates/crsh_repl" }
 
 clap = { version = "4.5.7", features = ["derive"] }
-crossterm = "0.27"
-logos = "0.14.0"
-os_pipe = "1.2.0"
-strip-ansi-escapes = "0.2.0"
 sysexits = "0.8.0"
 
 [profile.dev]
