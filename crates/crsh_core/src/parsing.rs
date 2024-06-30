@@ -126,7 +126,7 @@ fn parser<'a, 'b: 'a>(
                 .repeated(),
             |a, b, e| Command::And(Box::new((a, e.span())), Box::new((b, e.span()))),
         )
-        .labelled("logical and expression");
+        .labelled("and expression");
 
     let logical_or = logical_and
         .clone()
@@ -136,7 +136,7 @@ fn parser<'a, 'b: 'a>(
                 .repeated(),
             |a, b, e| Command::Or(Box::new((a, e.span())), Box::new((b, e.span()))),
         )
-        .labelled("logical or expression");
+        .labelled("or expression");
 
     let pipeline = logical_or
         .clone()
@@ -145,7 +145,7 @@ fn parser<'a, 'b: 'a>(
         .at_least(2)
         .collect::<Vec<_>>()
         .map(Command::Pipeline)
-        .labelled("command pipeline");
+        .labelled("pipeline");
 
     let cmd_list = pipeline
         .clone()
@@ -165,6 +165,8 @@ fn parser<'a, 'b: 'a>(
         .or(logical_and)
         .or(empty)
         .map_with(|c, e| (c, e.span()))
+        .labelled("command")
+        .as_context()
 }
 
 pub fn parse(input: &str) -> Result<Spanned<Command>, String> {

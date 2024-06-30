@@ -88,16 +88,23 @@ pub fn format_errors<T: fmt::Display>(
         .filter_map(|e| {
             let mut buffer = vec![];
 
-            if Report::build(ReportKind::Error, filename, e.span().start)
-                .with_message(e.to_string())
-                .with_label(Label::new((filename, e.span().into_range())).with_color(Color::Red))
+            let report_result = Report::build(ReportKind::Error, filename, e.span().start)
+                .with_label(
+                    Label::new((filename, e.span().into_range()))
+                        .with_message(e.to_string())
+                        .with_color(Color::Red),
+                )
+                .with_labels(e.contexts().map(|(label, span)| {
+                    Label::new((filename, span.into_range()))
+                        .with_message(format!("while parsing this {}", label))
+                        .with_color(Color::Yellow)
+                }))
                 .finish()
-                .write_for_stdout(sources([(filename, input)]), &mut buffer)
-                .is_ok()
-            {
-                String::from_utf8(buffer).ok()
-            } else {
-                None
+                .write_for_stdout(sources([(filename, input)]), &mut buffer);
+
+            match (report_result, String::from_utf8(buffer)) {
+                (Ok(_), Ok(msg)) => Some(msg.trim().to_string()),
+                _ => None,
             }
         })
         .collect::<Vec<_>>()
