@@ -1,7 +1,7 @@
 
 # <div align="center">crsh</div>
 
-Crappy Rust SHell. Basic implementation of a unix shell written in Rust, not meant to actually be used or taken seriously.
+<div align="center">Crappy Rust SHell. Basic shell written in Rust, not meant to actually be used or taken seriously.</div>
 
 ## Features
 
@@ -9,7 +9,7 @@ Crappy Rust SHell. Basic implementation of a unix shell written in Rust, not mea
 * Command launching, piping, logical grouping, and lists
 * Basic builtin commands `cd`, `which`, `exit`
 * Non-interactive mode
-* Persistent prompt history
+* Persistent prompt history with auto hints
 
 ## Todo
 
@@ -20,7 +20,6 @@ Crappy Rust SHell. Basic implementation of a unix shell written in Rust, not mea
 * Bash-esque variable expansion
 * Launching sub-shells
 * Full scripting functionality
-* Rewrite parser to use shunting yard
 * Implement stack based compiler/interpreter
 * Implement `ctrl-z` and `ctrl-c` and proper signal handling
 * New scripting language
@@ -28,3 +27,4 @@ Crappy Rust SHell. Basic implementation of a unix shell written in Rust, not mea
 * Loading configuration files (ie. `.profile`, `.*rc`, `.*env`)
 * Autocompletion
 * Syntax highlighting
+* Proper Windows support

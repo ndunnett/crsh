@@ -1,188 +1,205 @@
-use logos::{Lexer, Logos};
+use std::fmt;
 
-type ParseResult<T> = Result<T, String>;
+use ariadne::{sources, Color, Label, Report, ReportKind};
+use chumsky::{input::SpannedInput, prelude::*};
 
-#[derive(Debug, Copy, Clone, Logos)]
-#[logos(skip r"\s+")]
+type Span = SimpleSpan<usize>;
+type Spanned<T> = (T, Span);
+type ParserInput<'a, 'b> = SpannedInput<Token<'b>, Span, &'a [Spanned<Token<'b>>]>;
+type ParserError<'a> = extra::Err<Rich<'a, char, Span>>;
+
+#[derive(Debug, Clone, PartialEq)]
 enum Token<'a> {
-    #[token("|", priority = 10)]
-    Pipe,
-
-    #[token("||", priority = 10)]
-    DoublePipe,
-
-    #[token("&", priority = 10)]
-    And,
-
-    #[token("&&", priority = 10)]
-    DoubleAnd,
-
-    #[token(";", priority = 10)]
-    Semicolon,
-
-    #[regex(r"[^\s\|&;]+", priority = 1, callback = |lex| lex.slice())]
-    Word(&'a str),
+    Operator(&'a str),
+    Control(char),
+    Identifier(&'a str),
 }
 
-enum BindingPower {
-    None,
-    _Prefix(u8),
-    _Postfix(u8),
-    Infix(u8, u8),
-}
-
-impl<'a> Token<'a> {
-    fn bp(&self, _is_prefix: bool) -> BindingPower {
+impl<'a> fmt::Display for Token<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            Token::DoublePipe => BindingPower::Infix(7, 8),
-            Token::DoubleAnd => BindingPower::Infix(5, 6),
-            Token::Pipe => BindingPower::Infix(3, 4),
-            Token::Semicolon => BindingPower::Infix(1, 2),
-            _ => BindingPower::None,
+            Token::Operator(s) => write!(f, "{}", s),
+            Token::Control(c) => write!(f, "{}", c),
+            Token::Identifier(s) => write!(f, "{}", s),
         }
     }
+}
+
+fn lexer<'a>() -> impl Parser<'a, &'a str, Vec<Spanned<Token<'a>>>, ParserError<'a>> {
+    let ident = text::ascii::ident()
+        .map(Token::Identifier)
+        .labelled("identifier");
+
+    let filename = any()
+        .and_is(one_of("{}<>/\\|\":*?").not())
+        .and_is(one_of(" \n\r").not())
+        .repeated()
+        .at_least(1)
+        .to_slice()
+        .map(Token::Identifier)
+        .labelled("filename");
+
+    let path = filename
+        .separated_by(just('/'))
+        .allow_leading()
+        .allow_trailing()
+        .at_least(1)
+        .to_slice()
+        .map(Token::Identifier)
+        .labelled("path");
+
+    let double_quoted = just('"')
+        .ignore_then(none_of('"').repeated())
+        .then_ignore(just('"'))
+        .to_slice()
+        .map(Token::Identifier)
+        .labelled("double quoted");
+
+    let single_quoted = just('\'')
+        .ignore_then(none_of('\'').repeated())
+        .then_ignore(just('\''))
+        .to_slice()
+        .map(Token::Identifier)
+        .labelled("single quoted");
+
+    let op = one_of("&|")
+        .repeated()
+        .at_least(1)
+        .at_most(2)
+        .to_slice()
+        .map(Token::Operator)
+        .labelled("operator");
+
+    let ctrl = one_of("()[]{};,")
+        .map(Token::Control)
+        .labelled("control character");
+
+    let token = ctrl
+        .or(op)
+        .or(path)
+        .or(double_quoted)
+        .or(single_quoted)
+        .or(ident);
+
+    let comment = just("#")
+        .then(any().and_is(text::newline().not()).repeated())
+        .ignored();
+
+    token
+        .padded_by(comment.repeated())
+        .padded()
+        .recover_with(skip_then_retry_until(any().ignored(), end()))
+        .map_with(|tok, e| (tok, e.span()))
+        .repeated()
+        .collect()
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Command<'a> {
-    Empty,
-    Simple {
-        args: Vec<&'a str>,
-    },
-    And {
-        left: Box<Command<'a>>,
-        right: Box<Command<'a>>,
-    },
-    Or {
-        left: Box<Command<'a>>,
-        right: Box<Command<'a>>,
-    },
-    Pipeline {
-        cmds: Vec<Command<'a>>,
-    },
-    List {
-        cmds: Vec<Command<'a>>,
-    },
+    Simple(Vec<&'a str>),
+    And(Box<Self>, Box<Self>),
+    Or(Box<Self>, Box<Self>),
+    Pipeline(Vec<Self>),
+    List(Vec<Self>),
 }
 
-pub struct Parser<'a> {
-    lexer: Lexer<'a, Token<'a>>,
-    next: Option<Result<Token<'a>, ()>>,
-    last: Option<Result<Token<'a>, ()>>,
+fn parser<'a, 'b: 'a>() -> impl Parser<'a, ParserInput<'a, 'b>, Command<'b>> + Clone {
+    recursive(|cmd| {
+        let word = select! {
+            Token::Identifier(s) => s,
+        };
+
+        let simple_cmd = word
+            .repeated()
+            .at_least(1)
+            .collect::<Vec<_>>()
+            .map(Command::Simple);
+
+        let atom = cmd
+            .clone()
+            .delimited_by(just(Token::Control('(')), just(Token::Control(')')))
+            .or(simple_cmd);
+
+        let logical_cmd = atom.clone().foldl(
+            choice((
+                just(Token::Operator("&&")).to(Command::And as fn(_, _) -> _),
+                just(Token::Operator("||")).to(Command::Or as fn(_, _) -> _),
+            ))
+            .then(atom.clone())
+            .repeated(),
+            |a, (op, b)| op(Box::new(a), Box::new(b)),
+        );
+
+        let pipeline = logical_cmd
+            .clone()
+            .separated_by(just(Token::Operator("|")))
+            .at_least(2)
+            .collect::<Vec<_>>()
+            .map(Command::Pipeline);
+
+        let cmd_list = pipeline
+            .clone()
+            .separated_by(just(Token::Control(';')))
+            .at_least(2)
+            .allow_trailing()
+            .collect::<Vec<_>>()
+            .map(Command::List);
+
+        let empty = any().repeated().at_most(0).map(|_| Command::List(vec![]));
+
+        cmd_list.or(pipeline).or(logical_cmd).or(empty)
+    })
 }
 
-impl<'a> Parser<'a> {
-    pub fn new(input: &'a str) -> Self {
-        let mut lexer = Token::lexer(input);
-        let next = lexer.next();
+pub fn parse(input: &str) -> Result<Command, String> {
+    let mut lex_errors = vec![];
+    let mut parse_errors = vec![];
 
-        Self {
-            lexer,
-            next,
-            last: None,
+    match lexer().parse(input).into_result() {
+        Ok(tokens) => match parser()
+            .parse(tokens.as_slice().spanned((input.len()..input.len()).into()))
+            .into_result()
+        {
+            Ok(ast) => return Ok(ast),
+            Err(e) => parse_errors.extend(e),
+        },
+        Err(e) => lex_errors.extend(e),
+    }
+
+    let mut output = vec![];
+
+    if !lex_errors.is_empty() {
+        let filename = "";
+        let mut buffer = vec![];
+
+        lex_errors
+            .clone()
+            .into_iter()
+            .map(|e| e.map_token(|c| c.to_string()))
+            .for_each(|e| {
+                let _ = Report::build(ReportKind::Error, filename, e.span().start)
+                    .with_label(
+                        Label::new((filename, e.span().into_range()))
+                            .with_message(e.reason().to_string())
+                            .with_color(Color::Red),
+                    )
+                    .with_labels(e.contexts().map(|(label, span)| {
+                        Label::new((filename, span.into_range()))
+                            .with_message(format!("while parsing this {}", label))
+                            .with_color(Color::Yellow)
+                    }))
+                    .finish()
+                    .write_for_stdout(sources([(filename, input)]), &mut buffer);
+            });
+
+        output.push(String::from_utf8(buffer).unwrap_or_default());
+    }
+
+    if !parse_errors.is_empty() {
+        for e in parse_errors {
+            output.push(format!("{e:#?}"));
         }
     }
 
-    fn peek(&self) -> Option<Result<Token<'a>, ()>> {
-        self.next
-    }
-
-    fn next(&mut self) -> Option<Result<Token<'a>, ()>> {
-        self.last = self.next;
-        self.next = self.lexer.next();
-        self.last
-    }
-
-    pub fn parse(&mut self, bp: u8) -> ParseResult<Command<'a>> {
-        let mut ast = Command::Empty;
-        let mut is_prefix = true;
-
-        while let Some(Ok(token)) = self.peek() {
-            match (&ast, token.bp(is_prefix)) {
-                (Command::Empty, BindingPower::None) => {
-                    if matches!(token, Token::Word(_)) {
-                        let args = std::iter::from_fn(|| {
-                            if let Some(Ok(Token::Word(arg))) = self.peek() {
-                                self.next();
-                                Some(arg)
-                            } else {
-                                None
-                            }
-                        })
-                        .collect();
-
-                        ast = Command::Simple { args };
-                    } else {
-                        return Err(format!("bad token: {token:?}"));
-                    }
-                }
-                // (Command::Empty, BindingPower::Prefix(right_bp)) => {
-                //     self.next();
-                //     let operand = Box::new(self.parse(right_bp)?);
-
-                //     ast = match token {
-                //         Token::_ => Command::_ { operand },
-                //         t => return Err(format!("bad token: {t:?}")),
-                //     };
-                // }
-                // (_, BindingPower::Postfix(left_bp)) => {
-                //     if left_bp < bp {
-                //         break;
-                //     }
-
-                //     self.next();
-                //     let operand = Box::new(ast);
-
-                //     ast = match token {
-                //         Token::_ => Command::_ { operand },
-                //         t => return Err(format!("bad token: {t:?}")),
-                //     };
-                // }
-                (_, BindingPower::Infix(left_bp, right_bp)) => {
-                    if left_bp < bp {
-                        break;
-                    }
-
-                    self.next();
-
-                    ast = match token {
-                        Token::DoubleAnd => Command::And {
-                            left: Box::new(ast),
-                            right: Box::new(self.parse(right_bp)?),
-                        },
-                        Token::DoublePipe => Command::Or {
-                            left: Box::new(ast),
-                            right: Box::new(self.parse(right_bp)?),
-                        },
-                        Token::Pipe => {
-                            let mut cmds = if let Command::Pipeline { cmds: next_cmds } = ast {
-                                next_cmds
-                            } else {
-                                vec![ast]
-                            };
-
-                            cmds.push(self.parse(right_bp)?);
-                            Command::Pipeline { cmds }
-                        }
-                        Token::Semicolon => {
-                            let mut cmds = if let Command::List { cmds: next_cmds } = ast {
-                                next_cmds
-                            } else {
-                                vec![ast]
-                            };
-
-                            cmds.push(self.parse(right_bp)?);
-                            Command::List { cmds }
-                        }
-                        t => return Err(format!("bad token: {t:?}")),
-                    };
-                }
-                _ => break,
-            }
-
-            is_prefix = false;
-        }
-
-        Ok(ast)
-    }
+    Err(output.join("\n"))
 }

@@ -10,16 +10,11 @@ use super::{IOContext, Shell};
 impl Shell {
     pub fn execute(&mut self, ctx: Option<IOContext>, ast: &Command) -> ExitCode {
         match ast {
-            Command::Empty => ExitCode::Ok,
-            Command::Simple { args } => self.execute_simple(ctx, args),
-            Command::And { left, right } => self.execute_logical(ctx, true, left, right),
-            Command::Or { left, right } => self.execute_logical(ctx, false, left, right),
-            Command::Pipeline { cmds } => self.execute_pipeline(ctx, cmds),
-            Command::List { cmds } => self.execute_list(ctx, cmds),
-            // _ => {
-            //     sh.eprintln("crsh: unimplemented functionality");
-            //     -1
-            // }
+            Command::Simple(args) => self.execute_simple(ctx, args),
+            Command::And(left, right) => self.execute_logical(ctx, true, left, right),
+            Command::Or(left, right) => self.execute_logical(ctx, false, left, right),
+            Command::Pipeline(cmds) => self.execute_pipeline(ctx, cmds),
+            Command::List(cmds) => self.execute_list(ctx, cmds),
         }
     }
 

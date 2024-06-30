@@ -11,6 +11,7 @@ mod shell_io;
 
 pub use common_env::*;
 pub use config::*;
+pub use parsing::parse;
 pub use shell_io::*;
 
 pub struct Shell {
@@ -33,13 +34,13 @@ impl Default for Shell {
 
 impl Shell {
     pub fn interpret(&mut self, input: &str) -> ExitCode {
-        self.exit_code = match parsing::Parser::new(input).parse(0) {
+        self.exit_code = match parse(input) {
             Ok(ast) => {
                 // self.io.println(format!("{ast:#?}\n"));
                 self.execute(None, &ast)
             }
             Err(e) => {
-                self.io.eprintln(format!("crsh: parsing error: {e}"));
+                self.io.eprintln(e);
                 ExitCode::DataErr
             }
         };

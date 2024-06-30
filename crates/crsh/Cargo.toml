@@ -1,6 +1,6 @@
 [package]
 name = "crsh"
-description = "Crappy Rust SHell. Basic implementation of a unix shell written in Rust, not meant to actually be used or taken seriously."
+description = "Crappy Rust SHell. Basic shell written in Rust, not meant to actually be used or taken seriously."
 
 publish = false
 edition.workspace = true
