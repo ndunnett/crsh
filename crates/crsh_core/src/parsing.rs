@@ -1,12 +1,13 @@
 use std::fmt;
 
-use ariadne::{sources, Color, Label, Report, ReportKind};
-use chumsky::{input::SpannedInput, prelude::*};
+use chumsky::input::SpannedInput;
+use chumsky::prelude::*;
 
-type Span = SimpleSpan<usize>;
-type Spanned<T> = (T, Span);
+use super::*;
+
 type ParserInput<'a, 'b> = SpannedInput<Token<'b>, Span, &'a [Spanned<Token<'b>>]>;
-type ParserError<'a> = extra::Err<Rich<'a, char, Span>>;
+type LexerError<'a> = extra::Err<Rich<'a, char, Span>>;
+type ParserError<'a, 'b> = extra::Err<Rich<'a, Token<'b>, Span>>;
 
 #[derive(Debug, Clone, PartialEq)]
 enum Token<'a> {
@@ -25,7 +26,7 @@ impl<'a> fmt::Display for Token<'a> {
     }
 }
 
-fn lexer<'a>() -> impl Parser<'a, &'a str, Vec<Spanned<Token<'a>>>, ParserError<'a>> {
+fn lexer<'a>() -> impl Parser<'a, &'a str, Vec<Spanned<Token<'a>>>, LexerError<'a>> {
     let ident = text::ascii::ident()
         .map(Token::Identifier)
         .labelled("identifier");
@@ -96,110 +97,87 @@ fn lexer<'a>() -> impl Parser<'a, &'a str, Vec<Spanned<Token<'a>>>, ParserError<
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Command<'a> {
-    Simple(Vec<&'a str>),
-    And(Box<Self>, Box<Self>),
-    Or(Box<Self>, Box<Self>),
-    Pipeline(Vec<Self>),
-    List(Vec<Self>),
+    Simple(Spanned<Vec<&'a str>>),
+    And(Box<Spanned<Self>>, Box<Spanned<Self>>),
+    Or(Box<Spanned<Self>>, Box<Spanned<Self>>),
+    Pipeline(Vec<Spanned<Self>>),
+    List(Vec<Spanned<Self>>),
 }
 
-fn parser<'a, 'b: 'a>() -> impl Parser<'a, ParserInput<'a, 'b>, Command<'b>> + Clone {
-    recursive(|cmd| {
-        let word = select! {
-            Token::Identifier(s) => s,
-        };
+fn parser<'a, 'b: 'a>(
+) -> impl Parser<'a, ParserInput<'a, 'b>, Spanned<Command<'b>>, ParserError<'a, 'b>> + Clone {
+    let word = select! {
+        Token::Identifier(s) => s,
+    }
+    .labelled("word");
 
-        let simple_cmd = word
-            .repeated()
-            .at_least(1)
-            .collect::<Vec<_>>()
-            .map(Command::Simple);
+    let simple_cmd = word
+        .repeated()
+        .at_least(1)
+        .collect::<Vec<_>>()
+        .map_with(|c, e| (c, e.span()))
+        .map(Command::Simple)
+        .labelled("simple command");
 
-        let atom = cmd
-            .clone()
-            .delimited_by(just(Token::Control('(')), just(Token::Control(')')))
-            .or(simple_cmd);
+    let logical_and = simple_cmd
+        .foldl_with(
+            just(Token::Operator("&&"))
+                .ignore_then(simple_cmd)
+                .repeated(),
+            |a, b, e| Command::And(Box::new((a, e.span())), Box::new((b, e.span()))),
+        )
+        .labelled("logical and expression");
 
-        let logical_cmd = atom.clone().foldl(
-            choice((
-                just(Token::Operator("&&")).to(Command::And as fn(_, _) -> _),
-                just(Token::Operator("||")).to(Command::Or as fn(_, _) -> _),
-            ))
-            .then(atom.clone())
-            .repeated(),
-            |a, (op, b)| op(Box::new(a), Box::new(b)),
-        );
+    let logical_or = logical_and
+        .clone()
+        .foldl_with(
+            just(Token::Operator("||"))
+                .ignore_then(logical_and.clone())
+                .repeated(),
+            |a, b, e| Command::Or(Box::new((a, e.span())), Box::new((b, e.span()))),
+        )
+        .labelled("logical or expression");
 
-        let pipeline = logical_cmd
-            .clone()
-            .separated_by(just(Token::Operator("|")))
-            .at_least(2)
-            .collect::<Vec<_>>()
-            .map(Command::Pipeline);
+    let pipeline = logical_or
+        .clone()
+        .map_with(|c, e| (c, e.span()))
+        .separated_by(just(Token::Operator("|")))
+        .at_least(2)
+        .collect::<Vec<_>>()
+        .map(Command::Pipeline)
+        .labelled("command pipeline");
 
-        let cmd_list = pipeline
-            .clone()
-            .separated_by(just(Token::Control(';')))
-            .at_least(2)
-            .allow_trailing()
-            .collect::<Vec<_>>()
-            .map(Command::List);
+    let cmd_list = pipeline
+        .clone()
+        .map_with(|c, e| (c, e.span()))
+        .separated_by(just(Token::Control(';')))
+        .at_least(2)
+        .allow_trailing()
+        .collect::<Vec<_>>()
+        .map(Command::List)
+        .labelled("command list");
 
-        let empty = any().repeated().at_most(0).map(|_| Command::List(vec![]));
+    let empty = any().repeated().at_most(0).map(|_| Command::List(vec![]));
 
-        cmd_list.or(pipeline).or(logical_cmd).or(empty)
-    })
+    cmd_list
+        .or(pipeline)
+        .or(logical_or)
+        .or(logical_and)
+        .or(empty)
+        .map_with(|c, e| (c, e.span()))
 }
 
-pub fn parse(input: &str) -> Result<Command, String> {
-    let mut lex_errors = vec![];
-    let mut parse_errors = vec![];
-
+pub fn parse(input: &str) -> Result<Spanned<Command>, String> {
     match lexer().parse(input).into_result() {
-        Ok(tokens) => match parser()
-            .parse(tokens.as_slice().spanned((input.len()..input.len()).into()))
-            .into_result()
-        {
-            Ok(ast) => return Ok(ast),
-            Err(e) => parse_errors.extend(e),
-        },
-        Err(e) => lex_errors.extend(e),
-    }
-
-    let mut output = vec![];
-
-    if !lex_errors.is_empty() {
-        let filename = "";
-        let mut buffer = vec![];
-
-        lex_errors
-            .clone()
-            .into_iter()
-            .map(|e| e.map_token(|c| c.to_string()))
-            .for_each(|e| {
-                let _ = Report::build(ReportKind::Error, filename, e.span().start)
-                    .with_label(
-                        Label::new((filename, e.span().into_range()))
-                            .with_message(e.reason().to_string())
-                            .with_color(Color::Red),
-                    )
-                    .with_labels(e.contexts().map(|(label, span)| {
-                        Label::new((filename, span.into_range()))
-                            .with_message(format!("while parsing this {}", label))
-                            .with_color(Color::Yellow)
-                    }))
-                    .finish()
-                    .write_for_stdout(sources([(filename, input)]), &mut buffer);
-            });
-
-        output.push(String::from_utf8(buffer).unwrap_or_default());
-    }
-
-    if !parse_errors.is_empty() {
-        for e in parse_errors {
-            output.push(format!("{e:#?}"));
+        Ok(tokens) => {
+            match parser()
+                .parse(tokens.as_slice().spanned((input.len()..input.len()).into()))
+                .into_result()
+            {
+                Ok(ast) => Ok(ast),
+                Err(e) => Err(format_errors("", input, &e)),
+            }
         }
+        Err(e) => Err(format_errors("", input, &e)),
     }
-
-    Err(output.join("\n"))
 }

@@ -5,16 +5,17 @@ use sysexits::ExitCode;
 
 use super::builtin::Builtin;
 use super::parsing::Command;
+use super::Spanned;
 use super::{IOContext, Shell};
 
 impl Shell {
-    pub fn execute(&mut self, ctx: Option<IOContext>, ast: &Command) -> ExitCode {
+    pub fn execute(&mut self, ctx: Option<IOContext>, ast: &Spanned<Command>) -> ExitCode {
         match ast {
-            Command::Simple(args) => self.execute_simple(ctx, args),
-            Command::And(left, right) => self.execute_logical(ctx, true, left, right),
-            Command::Or(left, right) => self.execute_logical(ctx, false, left, right),
-            Command::Pipeline(cmds) => self.execute_pipeline(ctx, cmds),
-            Command::List(cmds) => self.execute_list(ctx, cmds),
+            (Command::Simple((args, _)), _) => self.execute_simple(ctx, args),
+            (Command::And(left, right), _) => self.execute_logical(ctx, true, left, right),
+            (Command::Or(left, right), _) => self.execute_logical(ctx, false, left, right),
+            (Command::Pipeline(cmds), _) => self.execute_pipeline(ctx, cmds),
+            (Command::List(cmds), _) => self.execute_list(ctx, cmds),
         }
     }
 
@@ -77,8 +78,8 @@ impl Shell {
         &mut self,
         ctx: Option<IOContext>,
         and: bool,
-        left: &Command,
-        right: &Command,
+        left: &Spanned<Command>,
+        right: &Spanned<Command>,
     ) -> ExitCode {
         let left_result = self.execute(ctx.clone(), left);
 
@@ -89,7 +90,7 @@ impl Shell {
         }
     }
 
-    fn execute_pipeline(&mut self, ctx: Option<IOContext>, cmds: &[Command]) -> ExitCode {
+    fn execute_pipeline(&mut self, ctx: Option<IOContext>, cmds: &[Spanned<Command>]) -> ExitCode {
         let io = match ctx {
             Some(ctx) => ctx,
             None => self.io.clone(),
@@ -140,7 +141,7 @@ impl Shell {
         }
     }
 
-    fn execute_list(&mut self, ctx: Option<IOContext>, cmds: &[Command]) -> ExitCode {
+    fn execute_list(&mut self, ctx: Option<IOContext>, cmds: &[Spanned<Command>]) -> ExitCode {
         cmds.iter()
             .map(|cmd| self.execute(ctx.clone(), cmd))
             .last()

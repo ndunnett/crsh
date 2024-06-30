@@ -1,5 +1,9 @@
-use std::path::{Path, PathBuf};
+use std::{
+    fmt,
+    path::{Path, PathBuf},
+};
 
+use ariadne::{sources, Color, Label, Report, ReportKind};
 use sysexits::ExitCode;
 
 mod builtin;
@@ -13,6 +17,9 @@ pub use common_env::*;
 pub use config::*;
 pub use parsing::parse;
 pub use shell_io::*;
+
+pub type Span = chumsky::prelude::SimpleSpan<usize>;
+pub type Spanned<T> = (T, Span);
 
 pub struct Shell {
     pub env: CommonEnv,
@@ -69,4 +76,30 @@ impl Shell {
         path.push(filename);
         path
     }
+}
+
+pub fn format_errors<T: fmt::Display>(
+    filename: &'static str,
+    input: &str,
+    errors: &[chumsky::prelude::Rich<'_, T>],
+) -> String {
+    errors
+        .iter()
+        .filter_map(|e| {
+            let mut buffer = vec![];
+
+            if Report::build(ReportKind::Error, filename, e.span().start)
+                .with_message(e.to_string())
+                .with_label(Label::new((filename, e.span().into_range())).with_color(Color::Red))
+                .finish()
+                .write_for_stdout(sources([(filename, input)]), &mut buffer)
+                .is_ok()
+            {
+                String::from_utf8(buffer).ok()
+            } else {
+                None
+            }
+        })
+        .collect::<Vec<_>>()
+        .join("\n")
 }
