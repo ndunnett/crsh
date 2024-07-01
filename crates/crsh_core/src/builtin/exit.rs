@@ -8,7 +8,7 @@ pub struct Exit {
 }
 
 impl ImplementedBuiltin for Exit {
-    fn build(args: &[&str]) -> Result<impl ImplementedBuiltin, String> {
+    fn build(args: &[String]) -> Result<impl ImplementedBuiltin, String> {
         let code: ExitCode = args
             .first()
             .map(|arg| {

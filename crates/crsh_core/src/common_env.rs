@@ -1,6 +1,10 @@
-use std::env;
-use std::ffi::OsStr;
-use std::path::PathBuf;
+use std::{
+    env,
+    ffi::OsStr,
+    path::{Path, PathBuf},
+};
+
+use crate::Shell;
 
 pub struct CommonEnv {
     pub pwd: PathBuf,
@@ -54,5 +58,29 @@ impl CommonEnv {
 
     pub fn get_pathbuf<S: AsRef<OsStr>>(var_name: S) -> Option<PathBuf> {
         env::var(var_name).ok().map(PathBuf::from)
+    }
+}
+
+impl Shell {
+    pub fn find_on_path<P: AsRef<Path>>(&self, keyword: P) -> Option<PathBuf> {
+        self.env
+            .path
+            .iter()
+            .filter_map(|dir| {
+                let path = dir.join(&keyword);
+
+                if path.is_file() {
+                    Some(path)
+                } else {
+                    None
+                }
+            })
+            .next()
+    }
+
+    pub fn config_filepath<S: AsRef<Path>>(&self, filename: S) -> PathBuf {
+        let mut path = self.env.config.clone();
+        path.push(filename);
+        path
     }
 }

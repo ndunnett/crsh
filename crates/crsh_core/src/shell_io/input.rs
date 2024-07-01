@@ -1,6 +1,4 @@
-use std::fs;
-use std::io;
-use std::process::Stdio;
+use std::{fs, io, process::Stdio};
 
 #[derive(Debug)]
 pub enum Input {

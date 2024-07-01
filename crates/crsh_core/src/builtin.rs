@@ -1,15 +1,15 @@
 use sysexits::ExitCode;
 
-use super::{IOContext, Shell};
-
-trait ImplementedBuiltin {
-    fn build(args: &[&str]) -> Result<impl ImplementedBuiltin, String>;
-    fn run(&self, sh: &mut Shell, io: &mut IOContext) -> ExitCode;
-}
+use crate::{IOContext, Shell};
 
 mod cd;
 mod exit;
 mod which;
+
+trait ImplementedBuiltin {
+    fn build(args: &[String]) -> Result<impl ImplementedBuiltin, String>;
+    fn run(&self, sh: &mut Shell, io: &mut IOContext) -> ExitCode;
+}
 
 pub enum Builtin {
     Cd,
@@ -31,7 +31,7 @@ impl Builtin {
         &self,
         sh: &mut Shell,
         io: &mut IOContext,
-        args: &[&str],
+        args: &[String],
     ) -> Result<ExitCode, String> {
         macro_rules! run_builtin {
             ($mod:ty) => {

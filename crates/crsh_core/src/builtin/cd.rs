@@ -1,5 +1,4 @@
-use std::env;
-use std::path::Path;
+use std::{env, path::Path};
 
 use clap::Parser;
 use sysexits::ExitCode;
@@ -35,8 +34,8 @@ pub struct Cd {
 }
 
 impl ImplementedBuiltin for Cd {
-    fn build(args: &[&str]) -> Result<impl ImplementedBuiltin, String> {
-        match Cli::try_parse_from(["cd"].iter().chain(args)) {
+    fn build(args: &[String]) -> Result<impl ImplementedBuiltin, String> {
+        match Cli::try_parse_from(["cd".to_string()].iter().chain(args)) {
             Ok(cli) => {
                 let mut option = CdOption::None;
                 let mut path = None;

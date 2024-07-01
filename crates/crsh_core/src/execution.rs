@@ -1,32 +1,44 @@
-use std::io;
-use std::process;
+use std::{io, process};
 
 use sysexits::ExitCode;
 
-use super::builtin::Builtin;
-use super::parsing::Command;
-use super::Spanned;
-use super::{IOContext, Shell};
+use crate::{parse, Builtin, Command, Expansion, IOContext, Shell, Spanned};
 
 impl Shell {
-    pub fn execute(&mut self, ctx: Option<IOContext>, ast: &Spanned<Command>) -> ExitCode {
+    pub fn interpret(&mut self, input: &str) -> ExitCode {
+        self.exit_code = match parse(input) {
+            Ok(ast) => {
+                // self.io.println(format!("{ast:#?}\n"));
+                self.execute(None, &ast)
+            }
+            Err(e) => {
+                self.io.eprintln(e);
+                ExitCode::DataErr
+            }
+        };
+
+        self.exit_code
+    }
+
+    fn execute(&mut self, ctx: Option<IOContext>, ast: &Spanned<Command>) -> ExitCode {
         match ast {
             (Command::Simple((args, _)), _) => self.execute_simple(ctx, args),
             (Command::And(left, right), _) => self.execute_logical(ctx, true, left, right),
             (Command::Or(left, right), _) => self.execute_logical(ctx, false, left, right),
-            (Command::Pipeline(cmds), _) => self.execute_pipeline(ctx, cmds),
-            (Command::List(cmds), _) => self.execute_list(ctx, cmds),
+            (Command::Pipeline((cmds, _)), _) => self.execute_pipeline(ctx, cmds),
+            (Command::List((cmds, _)), _) => self.execute_list(ctx, cmds),
         }
     }
 
-    fn execute_simple(&mut self, ctx: Option<IOContext>, args: &[&str]) -> ExitCode {
+    fn execute_simple(&mut self, ctx: Option<IOContext>, args: &[Expansion]) -> ExitCode {
         let mut io = match ctx {
             Some(ctx) => ctx,
             None => self.io.clone(),
         };
 
-        let keyword = args[0];
-        let args = &args[1..args.len()];
+        let expanded_args = args.iter().map(Expansion::expand).collect::<Vec<_>>();
+        let keyword = &expanded_args[0];
+        let args = &expanded_args[1..expanded_args.len()];
 
         if let Some(builtin) = Builtin::get(keyword) {
             match builtin.run(self, &mut io, args) {
@@ -37,14 +49,13 @@ impl Shell {
                 }
             }
         } else if self.find_on_path(keyword).is_some() {
-            let args = args.iter().map(|s| s.to_string()).collect::<Vec<_>>();
             let mut cmd = process::Command::new(keyword);
 
             let child = cmd
                 .stdin(io.input.clone())
                 .stdout(io.output.clone())
                 .stderr(io.error.clone())
-                .args(&args)
+                .args(args)
                 .spawn();
 
             drop(io);
