@@ -62,6 +62,10 @@ impl CommonEnv {
 }
 
 impl Shell {
+    pub fn get_variable<S: AsRef<OsStr>>(&self, key: S) -> Option<String> {
+        CommonEnv::get_string(key)
+    }
+
     pub fn find_on_path<P: AsRef<Path>>(&self, keyword: P) -> Option<PathBuf> {
         self.env
             .path

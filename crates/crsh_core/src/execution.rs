@@ -36,7 +36,7 @@ impl Shell {
             None => self.io.clone(),
         };
 
-        let expanded_args = args.iter().map(Expansion::expand).collect::<Vec<_>>();
+        let expanded_args = args.iter().map(|arg| arg.expand(self)).collect::<Vec<_>>();
         let keyword = &expanded_args[0];
         let args = &expanded_args[1..expanded_args.len()];
 
