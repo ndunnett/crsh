@@ -14,7 +14,7 @@ pub struct Prompt<'a> {
 }
 
 impl<'a> Prompt<'a> {
-    pub fn new(shell: &'a mut Shell) -> Prompt {
+    pub fn new(shell: &'a mut Shell) -> Prompt<'a> {
         Prompt {
             shell,
             style: PromptStyle::new(),

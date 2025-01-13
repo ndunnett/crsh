@@ -109,7 +109,7 @@ impl Shell {
 
         let mut pipes = Vec::new();
 
-        let results = cmds.iter().map(|cmd| {
+        let mut results = cmds.iter().map(|cmd| {
             let new_ctx = if Some(cmd) == cmds.first() {
                 let (reader, writer) = os_pipe::pipe()?;
                 pipes.push((reader.try_clone()?, writer.try_clone()?));
@@ -142,7 +142,7 @@ impl Shell {
             Ok::<ExitCode, io::Error>(self.execute(Some(new_ctx), cmd))
         });
 
-        match results.last() {
+        match results.next_back() {
             Some(Ok(code)) => code,
             Some(Err(e)) => {
                 self.io.eprintln(format!("crsh: {e}"));
@@ -155,7 +155,7 @@ impl Shell {
     fn execute_list(&mut self, ctx: Option<IOContext>, cmds: &[Spanned<Command>]) -> ExitCode {
         cmds.iter()
             .map(|cmd| self.execute(ctx.clone(), cmd))
-            .last()
+            .next_back()
             .unwrap_or(ExitCode::Ok)
     }
 }

@@ -15,14 +15,14 @@ pub enum Token<'a> {
     SingleQuoted(&'a str),
 }
 
-impl<'a> fmt::Display for Token<'a> {
+impl fmt::Display for Token<'_> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            Token::Operator(s) => write!(f, "{}", s),
-            Token::Control(c) => write!(f, "{}", c),
-            Token::Unquoted(s) => write!(f, "{}", s),
-            Token::DoubleQuoted(s) => write!(f, "\"{}\"", s),
-            Token::SingleQuoted(s) => write!(f, "'{}'", s),
+            Token::Operator(s) => write!(f, "{s}"),
+            Token::Control(c) => write!(f, "{c}"),
+            Token::Unquoted(s) => write!(f, "{s}"),
+            Token::DoubleQuoted(s) => write!(f, "\"{s}\""),
+            Token::SingleQuoted(s) => write!(f, "'{s}'"),
         }
     }
 }
@@ -55,16 +55,16 @@ pub fn lexer<'a>() -> impl Parser<'a, &'a str, Vec<Spanned<Token<'a>>>, LexerErr
         .or(text::ascii::ident())
         .map(Token::Unquoted);
 
-    let double_quoted = just('"')
-        .ignore_then(none_of('"').repeated())
-        .then_ignore(just('"'))
+    let double_quoted = none_of('"')
+        .repeated()
         .to_slice()
+        .delimited_by(just('"'), just('"'))
         .map(Token::DoubleQuoted);
 
-    let single_quoted = just('\'')
-        .ignore_then(none_of('\'').repeated())
-        .then_ignore(just('\''))
+    let single_quoted = none_of('\'')
+        .repeated()
         .to_slice()
+        .delimited_by(just('\''), just('\''))
         .map(Token::SingleQuoted);
 
     let expansion = unquoted.or(double_quoted).or(single_quoted);
