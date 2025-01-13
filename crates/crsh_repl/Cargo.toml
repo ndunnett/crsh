@@ -10,6 +10,7 @@ repository.workspace = true
 version.workspace = true
 
 [dependencies]
+ansi_term = "0.12"
 crsh_core = { workspace = true }
-reedline = "0.38.0"
+rustyline = { version = "15.0.0", features = ["custom-bindings", "derive"] }
 sysexits = { workspace = true }
