@@ -10,8 +10,8 @@ repository.workspace = true
 version.workspace = true
 
 [dependencies]
-ariadne = "0.4.1"
+ariadne = "0.5.0"
 chumsky = { version = "1.0.0-alpha.7", features = ["label"] }
 clap = { workspace = true }
-os_pipe = "1.2.0"
+os_pipe = "1.2.1"
 sysexits = { workspace = true }

@@ -15,15 +15,23 @@ repository = "https://github.com/ndunnett/crsh"
 crsh_core = { path = "crates/crsh_core" }
 crsh_repl = { path = "crates/crsh_repl" }
 
-clap = { version = "4.5.7", features = ["derive"] }
-sysexits = "0.8.0"
+clap = { version = "4.5.26", features = ["derive"] }
+sysexits = "0.8.5"
 
 [profile.dev]
 codegen-units = 1
 lto = "off"
 opt-level = 0
+panic = "abort"
+
+[profile.dev.package."*"]
+codegen-units = 1
+opt-level = 3
+strip = true
 
 [profile.release]
-lto = true
+codegen-units = 1
+lto = "fat"
 opt-level = 3
+panic = "abort"
 strip = true

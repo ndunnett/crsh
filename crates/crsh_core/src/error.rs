@@ -12,7 +12,7 @@ pub fn format_errors<T: fmt::Display>(
         .filter_map(|e| {
             let mut buffer = vec![];
 
-            let report_result = Report::build(ReportKind::Error, filename, e.span().start)
+            let report_result = Report::build(ReportKind::Error, (filename, e.span().into_range()))
                 .with_label(
                     Label::new((filename, e.span().into_range()))
                         .with_message(e.to_string())

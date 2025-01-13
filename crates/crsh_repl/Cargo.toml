@@ -11,5 +11,5 @@ version.workspace = true
 
 [dependencies]
 crsh_core = { workspace = true }
-reedline = "0.32.0"
+reedline = "0.38.0"
 sysexits = { workspace = true }
