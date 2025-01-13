@@ -3,14 +3,15 @@
     "dockerfile": "Dockerfile"
   },
   "mounts": [
-    "source=${localWorkspaceFolder},target=/home/dev/ws,type=bind,consistency=cached"
+    "source=${localWorkspaceFolder},target=/ws,type=bind,consistency=cached"
   ],
-  "workspaceFolder": "/home/dev/ws",
+  "workspaceFolder": "/ws",
   "customizations": {
     "vscode": {
       "extensions": [
         "rust-lang.rust-analyzer",
-        "tamasfe.even-better-toml"
+        "tamasfe.even-better-toml",
+        "fill-labs.dependi"
       ]
     }
   }
