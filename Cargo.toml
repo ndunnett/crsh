@@ -1,6 +1,5 @@
 [workspace]
 default-members = ["crates/crsh"]
-exclude = ["reedline"]
 members = ["crates/*"]
 resolver = "2"
 

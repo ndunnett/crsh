@@ -119,7 +119,10 @@ fn main() -> ExitCode {
     let mut sh = Shell::from(cli);
 
     match mode {
-        ShellMode::Interactive => Prompt::new(&mut sh).repl(),
+        ShellMode::Interactive => {
+            let history_source = sh.config_filepath(&sh.config.history_file);
+            Prompt::new(&mut sh).with_history(history_source).repl()
+        }
         ShellMode::Read => {
             let mut input = String::new();
 

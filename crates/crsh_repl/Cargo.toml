@@ -11,6 +11,8 @@ version.workspace = true
 
 [dependencies]
 ansi_term = "0.12"
+crossterm = "0.28.1"
+ctrlc = "3.4.5"
 crsh_core = { workspace = true }
-rustyline = { version = "15.0.0", features = ["custom-bindings", "derive"] }
+itertools = "0.14.0"
 sysexits = { workspace = true }

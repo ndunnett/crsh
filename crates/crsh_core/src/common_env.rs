@@ -30,6 +30,10 @@ impl Default for CommonEnv {
         });
         config.push("crsh");
 
+        if !config.is_dir() {
+            _ = std::fs::create_dir_all(&config);
+        }
+
         let path = env::var_os("PATH")
             .map(|path| env::split_paths(&path).collect())
             .unwrap_or_else(|| env::split_paths("/usr/sbin:/usr/bin:/sbin:/bin").collect());
