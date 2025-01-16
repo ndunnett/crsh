@@ -21,6 +21,10 @@ impl Shell {
     }
 
     fn execute(&mut self, ctx: Option<IOContext>, ast: &Spanned<Command>) -> ExitCode {
+        if self.should_exit {
+            return self.exit_code;
+        }
+
         match ast {
             (Command::Simple((args, _)), _) => self.execute_simple(ctx, args),
             (Command::And(left, right), _) => self.execute_logical(ctx, true, left, right),
@@ -31,6 +35,10 @@ impl Shell {
     }
 
     fn execute_simple(&mut self, ctx: Option<IOContext>, args: &[Expansion]) -> ExitCode {
+        if self.should_exit {
+            return self.exit_code;
+        }
+
         let mut io = match ctx {
             Some(ctx) => ctx,
             None => self.io.clone(),
@@ -92,6 +100,10 @@ impl Shell {
         left: &Spanned<Command>,
         right: &Spanned<Command>,
     ) -> ExitCode {
+        if self.should_exit {
+            return self.exit_code;
+        }
+
         let left_result = self.execute(ctx.clone(), left);
 
         if (left_result == ExitCode::Ok) == and {
@@ -102,6 +114,10 @@ impl Shell {
     }
 
     fn execute_pipeline(&mut self, ctx: Option<IOContext>, cmds: &[Spanned<Command>]) -> ExitCode {
+        if self.should_exit {
+            return self.exit_code;
+        }
+
         let io = match ctx {
             Some(ctx) => ctx,
             None => self.io.clone(),
@@ -153,6 +169,10 @@ impl Shell {
     }
 
     fn execute_list(&mut self, ctx: Option<IOContext>, cmds: &[Spanned<Command>]) -> ExitCode {
+        if self.should_exit {
+            return self.exit_code;
+        }
+
         cmds.iter()
             .map(|cmd| self.execute(ctx.clone(), cmd))
             .next_back()

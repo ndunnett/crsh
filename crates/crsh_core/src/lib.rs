@@ -20,6 +20,7 @@ pub struct Shell {
     pub exit_code: ExitCode,
     pub io: IOContext,
     pub config: ShellConfig,
+    pub should_exit: bool,
 }
 
 impl Default for Shell {
@@ -29,6 +30,7 @@ impl Default for Shell {
             exit_code: ExitCode::Ok,
             io: IOContext::default(),
             config: ShellConfig::default(),
+            should_exit: false,
         }
     }
 }

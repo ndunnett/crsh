@@ -22,7 +22,8 @@ impl ImplementedBuiltin for Exit {
         Ok(Self { code })
     }
 
-    fn run(&self, _sh: &mut Shell, _io: &mut IOContext) -> ExitCode {
-        self.code.exit()
+    fn run(&self, sh: &mut Shell, _io: &mut IOContext) -> ExitCode {
+        sh.should_exit = true;
+        self.code
     }
 }
