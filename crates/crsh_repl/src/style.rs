@@ -1,23 +1,17 @@
-use ansi_term::Colour;
+use crossterm::style::Color;
 
-pub struct PromptStyle {
-    pub colour_path: Colour,
-    pub colour_success: Colour,
-    pub colour_fail: Colour,
+pub struct Style {
+    pub colour_path: Color,
+    pub colour_success: Color,
+    pub colour_fail: Color,
 }
 
-impl Default for PromptStyle {
+impl Default for Style {
     fn default() -> Self {
         Self {
-            colour_path: Colour::Fixed(232),
-            colour_success: Colour::Green,
-            colour_fail: Colour::Red,
+            colour_path: Color::DarkGrey,
+            colour_success: Color::Green,
+            colour_fail: Color::Red,
         }
-    }
-}
-
-impl PromptStyle {
-    pub fn new() -> Self {
-        Default::default()
     }
 }

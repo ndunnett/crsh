@@ -108,33 +108,42 @@ impl From<Cli> for Shell {
 }
 
 fn main() -> ExitCode {
-    let mut args = env::args().collect::<Vec<_>>();
+    let mut cli = Cli::parse();
 
     if !io::stdin().is_terminal() {
-        args.push("--stdin".into());
+        cli.stdin = true;
     }
 
-    let cli = Cli::parse_from(args);
     let mode = cli.parse_shell_mode();
-    let mut sh = Shell::from(cli);
+    let mut shell = Shell::from(cli);
 
     match mode {
         ShellMode::Interactive => {
-            let history_source = sh.config_filepath(&sh.config.history_file);
-            Prompt::new(&mut sh).with_history(history_source).repl()
+            let history_source = shell.config_filepath(&shell.config.history_file);
+            let mut prompt = Prompt::new(&mut shell).with_history(history_source);
+
+            match prompt.repl() {
+                Ok(code) => code,
+                Err(e) => {
+                    eprintln!("crsh: prompt error: {e}");
+                    ExitCode::OsErr
+                }
+            }
         }
         ShellMode::Read => {
             let mut input = String::new();
 
-            if io::stdin().read_to_string(&mut input).is_ok() {
-                sh.interpret(&input)
-            } else {
-                ExitCode::IoErr
+            match io::stdin().read_to_string(&mut input) {
+                Ok(_) => shell.interpret(&input),
+                Err(e) => {
+                    eprintln!("crsh: failed to read stdin: {e}");
+                    ExitCode::IoErr
+                }
             }
         }
-        ShellMode::Command(input) => sh.interpret(&input),
+        ShellMode::Command(input) => shell.interpret(&input),
         ShellMode::Script(path) => match fs::read_to_string(&path) {
-            Ok(script) => sh.interpret(&script),
+            Ok(script) => shell.interpret(&script),
             Err(e) => {
                 eprintln!("crsh: failed to run script at \"{path}\": {e}");
                 ExitCode::NoInput

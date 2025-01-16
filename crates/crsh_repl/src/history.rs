@@ -1,32 +1,30 @@
 use std::{
-    fmt, fs,
+    fs,
     io::{self, Read, Write},
     path::PathBuf,
 };
 
 use itertools::Itertools;
 
-const MAX_HISTORY_SIZE: usize = 25;
-
-pub enum HistorySource {
+pub enum Source {
     None,
     File(PathBuf),
 }
 
-impl Default for HistorySource {
+impl Default for Source {
     fn default() -> Self {
         Self::None
     }
 }
 
-impl From<PathBuf> for HistorySource {
+impl From<PathBuf> for Source {
     fn from(file_path: PathBuf) -> Self {
         _ = fs::create_dir_all(file_path.parent().unwrap());
         Self::File(file_path)
     }
 }
 
-impl HistorySource {
+impl Source {
     fn save(&self, history: &[Vec<char>]) -> io::Result<()> {
         match self {
             Self::None => Ok(()),
@@ -71,49 +69,45 @@ impl HistorySource {
 }
 
 #[derive(Default)]
-pub struct PromptHistory {
-    source: HistorySource,
-    history: Vec<Vec<char>>,
+pub struct History {
+    source: Source,
+    buffers: Vec<Vec<char>>,
     index: usize,
 }
 
-impl Drop for PromptHistory {
-    fn drop(&mut self) {
-        let _ = self.save();
-    }
-}
+impl History {
+    const MAX_SIZE: usize = 50;
 
-impl PromptHistory {
     pub fn new<S>(source: S) -> Self
     where
-        HistorySource: std::convert::From<S>,
+        Source: std::convert::From<S>,
     {
-        let source = HistorySource::from(source);
+        let source = Source::from(source);
         let history = source.read().unwrap();
         let index = history.len();
 
         Self {
             source,
-            history,
+            buffers: history,
             index,
         }
     }
 
     pub fn save(&self) -> io::Result<()> {
-        self.source.save(&self.history)
+        self.source.save(&self.buffers)
     }
 
     pub fn back(&mut self) -> Option<Vec<char>> {
         if self.index > 0 {
             self.index -= 1;
-            Some(self.history[self.index].clone())
+            Some(self.buffers[self.index].clone())
         } else {
             None
         }
     }
 
     pub fn forward(&mut self) -> Option<Vec<char>> {
-        match self.history.len() - self.index {
+        match self.buffers.len() - self.index {
             0 => None,
             1 => {
                 self.index += 1;
@@ -121,34 +115,20 @@ impl PromptHistory {
             }
             _ => {
                 self.index += 1;
-                Some(self.history[self.index].clone())
+                Some(self.buffers[self.index].clone())
             }
         }
     }
 
     pub fn push(&mut self, buffer: Vec<char>) {
-        if self.history.last() != Some(&buffer) {
-            self.history.push(buffer.clone());
+        if self.buffers.last() != Some(&buffer) {
+            self.buffers.push(buffer.clone());
 
-            if self.history.len() > MAX_HISTORY_SIZE {
-                self.history.remove(0);
+            if self.buffers.len() > Self::MAX_SIZE {
+                self.buffers.remove(0);
             }
         }
 
-        self.index = self.history.len();
-    }
-}
-
-impl fmt::Display for PromptHistory {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            f,
-            "{}",
-            self.history
-                .iter()
-                .map(|line| line.iter().collect::<String>())
-                .collect::<Vec<_>>()
-                .join("\n")
-        )
+        self.index = self.buffers.len();
     }
 }
