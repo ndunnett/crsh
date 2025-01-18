@@ -62,15 +62,15 @@ impl ImplementedBuiltin for Cd {
         }
     }
 
-    fn run(&self, sh: &mut Shell, io: &mut IOContext) -> ExitCode {
+    fn run(&self, _shell: &mut Shell, io: &mut IOContext) -> ExitCode {
         let path = match (&self.path, &self.option) {
-            (None, CdOption::Back) => sh.env.oldpwd.to_string_lossy().to_string(),
-            (None, _) => sh.env.home.to_string_lossy().to_string(),
+            (None, CdOption::Back) => env::var("OLDPWD").unwrap_or_default(),
+            (None, _) => env::var("HOME").unwrap_or_default(),
             // -L and -P options not yet implemented
             // todo: https://pubs.opengroup.org/onlinepubs/9699919799/utilities/cd.html
             (Some(s), _) => {
                 if s.starts_with('~') {
-                    s.replacen('~', &sh.env.home.to_string_lossy(), 1)
+                    s.replacen('~', &env::var("HOME").unwrap_or_default(), 1)
                 } else {
                     s.into()
                 }
@@ -84,14 +84,14 @@ impl ImplementedBuiltin for Cd {
             return ExitCode::NoInput;
         }
 
+        let pwd = env::current_dir().unwrap_or_default();
+
         if let Err(e) = env::set_current_dir(&path) {
             io.eprintln(format!("cd: cannot access '{path}': {e}"));
             ExitCode::NoInput
         } else {
-            let pwd = env::current_dir().unwrap_or_else(|_| path.into());
-            env::set_var("OLDPWD", &sh.env.pwd);
-            sh.env.oldpwd.clone_from(&sh.env.pwd);
-            sh.env.pwd = pwd;
+            env::set_var("PWD", env::current_dir().unwrap_or_default());
+            env::set_var("OLDPWD", pwd);
             ExitCode::Ok
         }
     }

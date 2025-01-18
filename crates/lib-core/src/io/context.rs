@@ -1,12 +1,8 @@
-use std::io::{self, Read, Write};
+use std::io::{Read, Write};
 
-mod input;
-mod output;
+use super::{input::Input, output::Output};
 
-pub use input::*;
-pub use output::*;
-
-#[derive(Clone)]
+#[derive(Debug)]
 pub struct IOContext {
     pub input: Input,
     pub output: Output,
@@ -16,14 +12,22 @@ pub struct IOContext {
 impl Default for IOContext {
     fn default() -> Self {
         Self {
-            input: Default::default(),
-            output: Default::default(),
-            error: Output::Stderr(io::stderr()),
+            input: Input::Stdin(std::io::stdin()),
+            output: Output::Stdout(std::io::stdout()),
+            error: Output::Stderr(std::io::stderr()),
         }
     }
 }
 
 impl IOContext {
+    pub fn try_clone(&self) -> std::io::Result<Self> {
+        Ok(Self {
+            input: self.input.try_clone()?,
+            output: self.output.try_clone()?,
+            error: self.error.try_clone()?,
+        })
+    }
+
     pub fn _null() -> Self {
         Self {
             input: Input::Null,
@@ -32,7 +36,7 @@ impl IOContext {
         }
     }
 
-    pub fn _read(&mut self) -> Result<String, io::Error> {
+    pub fn _read(&mut self) -> std::io::Result<String> {
         let mut buffer = String::new();
         self.input.read_to_string(&mut buffer)?;
         Ok(buffer)

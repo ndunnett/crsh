@@ -8,7 +8,7 @@ mod which;
 
 trait ImplementedBuiltin {
     fn build(args: &[String]) -> Result<impl ImplementedBuiltin, String>;
-    fn run(&self, sh: &mut Shell, io: &mut IOContext) -> ExitCode;
+    fn run(&self, shell: &mut Shell, io: &mut IOContext) -> ExitCode;
 }
 
 pub enum Builtin {
@@ -29,13 +29,13 @@ impl Builtin {
 
     pub fn run(
         &self,
-        sh: &mut Shell,
+        shell: &mut Shell,
         io: &mut IOContext,
         args: &[String],
     ) -> Result<ExitCode, String> {
         macro_rules! run_builtin {
             ($mod:ty) => {
-                Ok(<$mod>::build(args)?.run(sh, io))
+                Ok(<$mod>::build(args)?.run(shell, io))
             };
         }
 

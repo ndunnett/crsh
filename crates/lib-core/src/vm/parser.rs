@@ -1,7 +1,7 @@
+use ariadne::{sources, Color, Label, Report, ReportKind};
 use chumsky::{input::SpannedInput, prelude::*};
 
-use super::lex::Token;
-use crate::{Expansion, Span, Spanned};
+use crate::{scanner, Error, Expansion, Result, Span, Spanned, Token};
 
 type ParserInput<'a, 'b> = SpannedInput<Token<'b>, Span, &'a [Spanned<Token<'b>>]>;
 type ParserError<'a, 'b> = extra::Err<Rich<'a, Token<'b>, Span>>;
@@ -80,4 +80,50 @@ pub fn parser<'a, 'b: 'a>(
             .or(empty)
     })
     .map_with(|c, e| (c, e.span()))
+}
+
+pub fn format_errors<T: std::fmt::Display>(input: &str, errors: &[Rich<'_, T>]) -> Error {
+    Error::Adhoc {
+        string: errors
+            .iter()
+            .filter_map(|e| {
+                let mut buffer = vec![];
+
+                let report_result = Report::build(ReportKind::Error, ("", e.span().into_range()))
+                    .with_label(
+                        Label::new(("", e.span().into_range()))
+                            .with_message(e.to_string())
+                            .with_color(Color::Red),
+                    )
+                    .with_labels(e.contexts().map(|(label, span)| {
+                        Label::new(("", span.into_range()))
+                            .with_message(format!("while parsing this {}", label))
+                            .with_color(Color::Yellow)
+                    }))
+                    .finish()
+                    .write_for_stdout(sources([("", input)]), &mut buffer);
+
+                match (report_result, String::from_utf8(buffer)) {
+                    (Ok(_), Ok(msg)) => Some(msg.trim().to_string()),
+                    _ => None,
+                }
+            })
+            .collect::<Vec<_>>()
+            .join("\n"),
+    }
+}
+
+pub fn parse(input: &str) -> Result<Spanned<Command>> {
+    match scanner().parse(input).into_result() {
+        Ok(tokens) => {
+            match parser()
+                .parse(tokens.as_slice().spanned((input.len()..input.len()).into()))
+                .into_result()
+            {
+                Ok(ast) => Ok(ast),
+                Err(e) => Err(format_errors(input, &e)),
+            }
+        }
+        Err(e) => Err(format_errors(input, &e)),
+    }
 }

@@ -1,17 +1,16 @@
 [package]
-name = "crsh_core"
-
-publish = false
-edition.workspace = true
-homepage.workspace = true
-license.workspace = true
-readme.workspace = true
-repository.workspace = true
+name = "lib_core"
 version.workspace = true
+edition.workspace = true
+readme.workspace = true
+license.workspace = true
+homepage.workspace = true
+repository.workspace = true
 
 [dependencies]
 ariadne = "0.5.0"
 chumsky = { version = "1.0.0-alpha.7", features = ["label"] }
 clap = { workspace = true }
+derive_more = { version = "1.0.0", features = ["from"] }
 os_pipe = "1.2.1"
 sysexits = { workspace = true }

@@ -7,7 +7,7 @@ use crossterm::{cursor, event, execute, queue, style, terminal};
 use itertools::Itertools;
 use sysexits::ExitCode;
 
-use crsh_core::Shell;
+use lib_core::{Result, Shell};
 
 use crate::{
     editor::{Editor, Signal},
@@ -36,20 +36,16 @@ impl<'a> Prompt<'a> {
     }
 
     fn generate_prompt(&self) -> (String, usize) {
-        let home = &self.shell.env.home.to_string_lossy().to_string();
-        let mut pwd = self.shell.env.pwd.to_string_lossy().to_string();
+        let pwd = self.shell.pretty_pwd().unwrap_or_default();
+        let ps1 = "$";
 
-        if pwd.starts_with(home) {
-            pwd = pwd.replacen(home, "~", 1);
-        }
-
-        let indicator_colour = if self.shell.exit_code.is_success() {
+        let indicator_colour = if self.shell.exit_code().is_success() {
             self.style.colour_success
         } else {
             self.style.colour_fail
         };
 
-        let len = pwd.len() + self.shell.env.ps1.len() + 2;
+        let len = pwd.len() + ps1.len() + 2;
         let mut bytes = Vec::new();
 
         _ = execute!(
@@ -58,7 +54,7 @@ impl<'a> Prompt<'a> {
             style::Print(pwd),
             style::Print(' '),
             style::SetForegroundColor(indicator_colour),
-            style::Print(self.shell.env.ps1.clone()),
+            style::Print(ps1),
             style::ResetColor,
             style::Print(' '),
         );
@@ -83,21 +79,21 @@ impl<'a> Prompt<'a> {
         let last_line = lines.next_back().unwrap_or_default();
 
         queue!(
-            self.shell.io.output,
+            self.shell.stdout(),
             cursor::RestorePosition,
             terminal::Clear(terminal::ClearType::FromCursorDown),
         )?;
 
         for line in lines {
             queue!(
-                self.shell.io.output,
+                self.shell.stdout(),
                 style::Print(line),
                 style::Print('\n'),
                 cursor::MoveToColumn(0),
             )?;
         }
 
-        queue!(self.shell.io.output, style::Print(last_line))?;
+        queue!(self.shell.stdout(), style::Print(last_line))?;
 
         let cursor_index = prompt_len + self.editor.cursor();
         let mut cursor_col = cursor_index % cols;
@@ -109,16 +105,16 @@ impl<'a> Prompt<'a> {
         }
 
         queue!(
-            self.shell.io.output,
+            self.shell.stdout(),
             cursor::RestorePosition,
             cursor::MoveToColumn(cursor_col as u16),
         )?;
 
         if cursor_row > 0 {
-            queue!(self.shell.io.output, cursor::MoveDown(cursor_row as u16))?;
+            queue!(self.shell.stdout(), cursor::MoveDown(cursor_row as u16))?;
         }
 
-        self.shell.io.output.flush()?;
+        self.shell.stdout().flush()?;
         Ok(())
     }
 
@@ -126,7 +122,7 @@ impl<'a> Prompt<'a> {
         terminal::enable_raw_mode()?;
 
         queue!(
-            self.shell.io.output,
+            self.shell.stdout(),
             cursor::MoveToColumn(0),
             cursor::SavePosition
         )?;
@@ -139,12 +135,12 @@ impl<'a> Prompt<'a> {
                     Ok(Signal::None) => {}
                     signal => {
                         queue!(
-                            self.shell.io.output,
+                            self.shell.stdout(),
                             style::Print('\n'),
                             cursor::MoveToColumn(0)
                         )?;
 
-                        self.shell.io.output.flush()?;
+                        self.shell.stdout().flush()?;
                         terminal::disable_raw_mode()?;
                         return signal;
                     }
@@ -153,32 +149,32 @@ impl<'a> Prompt<'a> {
         }
     }
 
-    pub fn repl(&mut self) -> io::Result<ExitCode> {
+    pub fn repl(&mut self) -> Result<ExitCode> {
         _ = ctrlc::set_handler(|| {});
 
-        while !self.shell.should_exit {
+        while !self.shell.should_exit() {
             match self.read_line() {
                 Ok(Signal::Buffer(buffer)) => {
                     self.shell.interpret(&buffer);
                 }
                 Ok(Signal::Interrupt) => {
-                    self.shell.io.println("^C");
-                    self.shell.exit_code = ExitCode::DataErr;
+                    writeln!(self.shell.stdout(), "^C")?;
+                    self.shell.set_exit_code(ExitCode::DataErr);
                     continue;
                 }
                 Ok(Signal::End) => {
-                    self.shell.io.println("^D");
-                    self.shell.exit_code = ExitCode::DataErr;
+                    writeln!(self.shell.stdout(), "^D")?;
+                    self.shell.set_exit_code(ExitCode::DataErr);
                     break;
                 }
                 Err(e) => {
-                    self.shell.io.eprintln(format!("crsh: error: {e:?}"));
-                    self.shell.exit_code = ExitCode::DataErr;
+                    writeln!(self.shell.stderr(), "crsh: error: {e:?}")?;
+                    self.shell.set_exit_code(ExitCode::DataErr);
                 }
                 _ => {}
             }
         }
 
-        Ok(self.shell.exit_code)
+        Ok(self.shell.exit_code())
     }
 }

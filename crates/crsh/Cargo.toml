@@ -12,6 +12,6 @@ version.workspace = true
 
 [dependencies]
 clap = { workspace = true }
-crsh_core = { workspace = true }
-crsh_repl = { workspace = true }
+lib_core = { workspace = true }
+lib_repl = { workspace = true }
 sysexits = { workspace = true }

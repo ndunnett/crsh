@@ -207,30 +207,8 @@ name = "crsh"
 version = "0.0.1"
 dependencies = [
  "clap",
- "crsh_core",
- "crsh_repl",
- "sysexits",
-]
-
-[[package]]
-name = "crsh_core"
-version = "0.0.1"
-dependencies = [
- "ariadne",
- "chumsky",
- "clap",
- "os_pipe",
- "sysexits",
-]
-
-[[package]]
-name = "crsh_repl"
-version = "0.0.1"
-dependencies = [
- "crossterm",
- "crsh_core",
- "ctrlc",
- "itertools",
+ "lib_core",
+ "lib_repl",
  "sysexits",
 ]
 
@@ -242,6 +220,26 @@ checksum = "90eeab0aa92f3f9b4e87f258c72b139c207d251f9cbc1080a0086b86a8870dd3"
 dependencies = [
  "nix",
  "windows-sys 0.59.0",
+]
+
+[[package]]
+name = "derive_more"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4a9b99b9cbbe49445b21764dc0625032a89b145a2642e67603e1c936f5458d05"
+dependencies = [
+ "derive_more-impl",
+]
+
+[[package]]
+name = "derive_more-impl"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cb7330aeadfbe296029522e6c40f315320aba36fc43a5b3632f3795348f3bd22"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
 ]
 
 [[package]]
@@ -289,6 +287,29 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2b192c782037fadd9cfa75548310488aabdbf3d2da73885b31bd0abd03351285"
 dependencies = [
  "either",
+]
+
+[[package]]
+name = "lib_core"
+version = "0.0.1"
+dependencies = [
+ "ariadne",
+ "chumsky",
+ "clap",
+ "derive_more",
+ "os_pipe",
+ "sysexits",
+]
+
+[[package]]
+name = "lib_repl"
+version = "0.0.1"
+dependencies = [
+ "crossterm",
+ "ctrlc",
+ "itertools",
+ "lib_core",
+ "sysexits",
 ]
 
 [[package]]

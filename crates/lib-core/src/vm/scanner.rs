@@ -27,7 +27,7 @@ impl fmt::Display for Token<'_> {
     }
 }
 
-pub fn lexer<'a>() -> impl Parser<'a, &'a str, Vec<Spanned<Token<'a>>>, LexerError<'a>> {
+pub fn scanner<'a>() -> impl Parser<'a, &'a str, Vec<Spanned<Token<'a>>>, LexerError<'a>> {
     let op = one_of("&|$<>")
         .repeated()
         .at_least(1)

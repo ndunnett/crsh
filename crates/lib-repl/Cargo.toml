@@ -1,17 +1,15 @@
 [package]
-name = "crsh_repl"
-
-publish = false
-edition.workspace = true
-homepage.workspace = true
-license.workspace = true
-readme.workspace = true
-repository.workspace = true
+name = "lib_repl"
 version.workspace = true
+edition.workspace = true
+readme.workspace = true
+license.workspace = true
+homepage.workspace = true
+repository.workspace = true
 
 [dependencies]
 crossterm = "0.28.1"
 ctrlc = "3.4.5"
-crsh_core = { workspace = true }
+lib_core = { workspace = true }
 itertools = "0.14.0"
 sysexits = { workspace = true }

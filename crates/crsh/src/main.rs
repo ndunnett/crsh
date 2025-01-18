@@ -5,8 +5,8 @@ use std::io::{self, IsTerminal, Read};
 use clap::{Parser, ValueEnum};
 use sysexits::ExitCode;
 
-use crsh_core::Shell;
-use crsh_repl::Prompt;
+use lib_core::Shell;
+use lib_repl::Prompt;
 
 #[derive(Parser, Debug)]
 #[command(version = env!("VERSION"))]
@@ -95,15 +95,8 @@ impl Cli {
 }
 
 impl From<Cli> for Shell {
-    fn from(cli: Cli) -> Self {
-        let mut sh = Self::default();
-        sh.config.args = env::args().collect::<Vec<_>>();
-
-        if let Some(history_file) = cli.history_file {
-            sh.config.history_file = history_file;
-        }
-
-        sh
+    fn from(_cli: Cli) -> Self {
+        Self::default()
     }
 }
 
@@ -119,13 +112,13 @@ fn main() -> ExitCode {
 
     match mode {
         ShellMode::Interactive => {
-            let history_source = shell.config_filepath(&shell.config.history_file);
+            let history_source = shell.config_filepath(".crsh-history");
             let mut prompt = Prompt::new(&mut shell).with_history(history_source);
 
             match prompt.repl() {
                 Ok(code) => code,
                 Err(e) => {
-                    eprintln!("crsh: prompt error: {e}");
+                    eprintln!("crsh: prompt error: {e:#?}");
                     ExitCode::OsErr
                 }
             }
