@@ -1,6 +1,6 @@
 use std::io;
 
-use crossterm::event::{self, Event, KeyCode, KeyModifiers};
+use crossterm::event::{self, Event, KeyCode, KeyEventKind, KeyModifiers};
 
 use crate::history::{History, Source};
 
@@ -51,6 +51,10 @@ impl Editor {
 
     pub fn poll(&mut self) -> io::Result<Signal> {
         if let Event::Key(key) = event::read()? {
+            if key.kind == KeyEventKind::Release {
+                return Ok(Signal::None);
+            }
+
             match (key.modifiers, key.code) {
                 (KeyModifiers::NONE, KeyCode::Home) => self.cursor = 0,
                 (KeyModifiers::NONE, KeyCode::End) => self.cursor = self.buffer.len(),

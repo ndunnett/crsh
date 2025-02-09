@@ -91,7 +91,15 @@ impl Shell {
     }
 
     pub fn pretty_pwd(&self) -> Option<String> {
-        let home = std::env::var("HOME").ok()?;
+        let home = format!(
+            "{}",
+            homedir::my_home()
+                .ok()
+                .unwrap_or_default()
+                .unwrap_or_default()
+                .to_string_lossy()
+        );
+
         let pwd = std::env::var("PWD").ok()?;
 
         if pwd.starts_with(&home) {
