@@ -144,8 +144,11 @@ impl Scanner<'_> {
     fn root(&mut self) -> Token {
         while let Some(c) = self.next_item() {
             match c {
-                '\n' => return self.delimit_token(TokenVariant::Newline),
-                ';' => return self.delimit_token(TokenVariant::Semicolon),
+                '"' => {
+                    self.token_start = self.token_end;
+                    self.mode_stack.push(ScanMode::DoubleQuotes);
+                    return self.double_quotes();
+                }
                 '(' => {
                     self.mode_stack.push(ScanMode::Subshell);
                     return self.delimit_token(TokenVariant::LeftParen);
@@ -154,28 +157,23 @@ impl Scanner<'_> {
                     self.mode_stack.pop();
                     return self.delimit_token(TokenVariant::RightParen);
                 }
-                c if c.is_whitespace() => {
-                    self.token_start = self.token_end;
+                '#' => {
+                    self.comment();
                     continue;
                 }
-                '"' => {
-                    self.token_start = self.token_end;
-                    self.mode_stack.push(ScanMode::DoubleQuotes);
-                    return self.double_quotes();
-                }
+                '\n' => return self.delimit_token(TokenVariant::Newline),
+                ';' => return self.delimit_token(TokenVariant::Semicolon),
                 '`' => return self.back_quotes(),
                 '\'' => return self.single_quotes(),
                 '~' => return self.tilde(),
                 '$' => return self.dollar(),
                 '&' => return self.ampersand(),
                 '|' => return self.bar(),
-                '#' => {
-                    self.comment();
+                c if c.is_whitespace() => {
+                    self.token_start = self.token_end;
                     continue;
                 }
-                _ => {
-                    return self.blob();
-                }
+                _ => return self.blob(),
             }
         }
 
@@ -185,21 +183,21 @@ impl Scanner<'_> {
     fn double_quotes(&mut self) -> Token {
         while let Some(c) = self.next_item() {
             match c {
-                c if c.is_whitespace() => {
-                    self.token_start = self.token_end;
-                    continue;
-                }
                 '$' => return self.dollar(),
-                '`' => {
-                    self.mode_stack.push(ScanMode::BackQuotes);
-                    return self.delimit_token(TokenVariant::BackQuote);
-                }
                 '"' => {
                     self.mode_stack.pop();
                     self.token_start = self.token_end;
                     return self.next_token();
                 }
+                '`' => {
+                    self.mode_stack.push(ScanMode::BackQuotes);
+                    return self.delimit_token(TokenVariant::BackQuote);
+                }
                 '\\' => todo!("implement character escapes"),
+                c if c.is_whitespace() => {
+                    self.token_start = self.token_end;
+                    continue;
+                }
                 _ => {
                     self.take_until(|c| Self::DOUBLE_QUOTED_CHARS.contains(c));
                     return self.delimit_token(TokenVariant::Blob);
