@@ -9,8 +9,8 @@ repository.workspace = true
 
 [dependencies]
 ariadne = "0.5.0"
-chumsky = { version = "1.0.0-alpha.7", features = ["label"] }
 clap = { workspace = true }
-derive_more = { version = "1.0.0", features = ["from"] }
+derive_more = { version = "2.0.1", features = ["from"] }
+homedir = "0.3.4"
 os_pipe = "1.2.1"
 sysexits = { workspace = true }

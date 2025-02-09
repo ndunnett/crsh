@@ -15,7 +15,7 @@ repository = "https://github.com/ndunnett/crsh"
 lib_core = { path = "crates/lib-core" }
 lib_repl = { path = "crates/lib-repl" }
 
-clap = { version = "4.5.26", features = ["derive"] }
+clap = { version = "4.5.28", features = ["derive"] }
 sysexits = "0.8.5"
 
 [profile.dev]
