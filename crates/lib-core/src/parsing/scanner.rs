@@ -96,23 +96,6 @@ impl ParsingIterator for Scanner<'_> {
 
 // helper methods
 impl Scanner<'_> {
-    fn delimit_token(&mut self, variant: TokenVariant) -> Token {
-        let span = self.token_start..self.token_end;
-        let line = self.line;
-        let column = self.column + self.token_start - self.token_end;
-        self.token_start = self.token_end;
-
-        Token {
-            variant,
-            span,
-            line,
-            column,
-        }
-    }
-}
-
-// parsing methods
-impl Scanner<'_> {
     const RESERVED_WORDS: [(&'static str, TokenVariant); 22] = [
         ("namespace", TokenVariant::Namespace),
         ("function", TokenVariant::Function),
@@ -141,6 +124,23 @@ impl Scanner<'_> {
     const META_CHARS: &'static str = "|&;()<>";
     const DOUBLE_QUOTED_CHARS: &'static str = "$`\"\\";
 
+    fn delimit_token(&mut self, variant: TokenVariant) -> Token {
+        let span = self.token_start..self.token_end;
+        let line = self.line;
+        let column = self.column + self.token_start - self.token_end;
+        self.token_start = self.token_end;
+
+        Token {
+            variant,
+            span,
+            line,
+            column,
+        }
+    }
+}
+
+// parsing methods
+impl Scanner<'_> {
     fn root(&mut self) -> Token {
         while let Some(c) = self.next_item() {
             match c {
@@ -158,7 +158,11 @@ impl Scanner<'_> {
                     self.token_start = self.token_end;
                     continue;
                 }
-                '"' => return self.double_quotes(),
+                '"' => {
+                    self.token_start = self.token_end;
+                    self.mode_stack.push(ScanMode::DoubleQuotes);
+                    return self.double_quotes();
+                }
                 '`' => return self.back_quotes(),
                 '\'' => return self.single_quotes(),
                 '~' => return self.tilde(),
@@ -179,9 +183,6 @@ impl Scanner<'_> {
     }
 
     fn double_quotes(&mut self) -> Token {
-        self.token_start = self.token_end;
-        self.mode_stack.push(ScanMode::DoubleQuotes);
-
         while let Some(c) = self.next_item() {
             match c {
                 c if c.is_whitespace() => {
