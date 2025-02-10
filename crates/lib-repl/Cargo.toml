@@ -8,6 +8,7 @@ homepage.workspace = true
 repository.workspace = true
 
 [dependencies]
+ansi-width = "0.1.0"
 crossterm = "0.28.1"
 ctrlc = "3.4.5"
 lib_core = { workspace = true }

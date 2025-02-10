@@ -3,7 +3,8 @@ use std::{
     time::Duration,
 };
 
-use crossterm::{cursor, event, execute, queue, style, terminal};
+use ansi_width::ansi_width;
+use crossterm::{cursor, event, queue, style, terminal};
 use itertools::Itertools;
 use sysexits::ExitCode;
 
@@ -12,7 +13,7 @@ use lib_core::{Result, Shell};
 use crate::{
     editor::{Editor, Signal},
     history::Source,
-    style::Style,
+    style::{AppliedStyle, Condition, Function, Style},
 };
 
 pub struct Prompt<'a> {
@@ -35,44 +36,96 @@ impl<'a> Prompt<'a> {
         self
     }
 
-    fn generate_prompt(&self) -> (String, usize) {
-        let pwd = self.shell.pretty_pwd().unwrap_or_default();
-        let ps1 = "$";
+    fn apply_style(&self, style: &AppliedStyle, bytes: &mut Vec<u8>) {
+        match style {
+            AppliedStyle::Foreground(colour) => {
+                _ = queue!(bytes, style::SetForegroundColor(*colour));
+            }
+            AppliedStyle::Conditional {
+                condition,
+                style_true,
+                style_false,
+            } => match condition {
+                Condition::ExitSuccess => {
+                    if self.shell.exit_code().is_success() {
+                        self.apply_style(style_true, bytes);
+                    } else {
+                        self.apply_style(style_false, bytes);
+                    }
+                }
+            },
+        }
+    }
 
-        let indicator_colour = if self.shell.exit_code().is_success() {
-            self.style.colour_success
-        } else {
-            self.style.colour_fail
-        };
+    fn compile_style(&self, style: &Style, bytes: &mut Vec<u8>) {
+        match style {
+            Style::Function { func, styling } => {
+                for s in styling {
+                    self.apply_style(s, bytes);
+                }
 
-        let len = pwd.len() + ps1.len() + 2;
+                let string = match func {
+                    Function::Directory => self.shell.pretty_pwd().unwrap_or_default(),
+                };
+
+                _ = queue!(bytes, style::Print(string), style::ResetColor);
+            }
+            Style::Text { string, styling } => {
+                for s in styling {
+                    self.apply_style(s, bytes);
+                }
+
+                _ = queue!(bytes, style::Print(string), style::ResetColor);
+            }
+            Style::Group { children } => {
+                for child in children {
+                    self.compile_style(child, bytes);
+                }
+            }
+        }
+    }
+
+    fn generate_prompt(&self) -> Vec<u8> {
         let mut bytes = Vec::new();
-
-        _ = execute!(
-            bytes,
-            style::SetForegroundColor(self.style.colour_path),
-            style::Print(pwd),
-            style::Print(' '),
-            style::SetForegroundColor(indicator_colour),
-            style::Print(ps1),
-            style::ResetColor,
-            style::Print(' '),
-        );
-
-        let prompt = String::from_utf8(bytes).unwrap_or_default();
-        (prompt, len)
+        self.compile_style(&self.style, &mut bytes);
+        _ = bytes.flush();
+        bytes
     }
 
     fn render(&mut self) -> io::Result<()> {
-        let (prompt, prompt_len) = self.generate_prompt();
+        let prompt = self.generate_prompt();
         let cols = terminal::size()?.0 as usize - 1;
-        let first_len = prompt.len() + cols.saturating_sub(prompt_len);
+        let mut lines = Vec::new();
 
-        let chars = prompt.chars().chain(self.editor.iter());
-        let mut lines = vec![String::from_iter(chars.clone().take(first_len))];
+        for bytes in prompt.split(|b| *b == b'\n') {
+            let mut trimmed_line = String::from_utf8(bytes.to_vec()).unwrap_or_default();
 
-        for line in chars.skip(first_len).chunks(cols).into_iter() {
+            while ansi_width(&trimmed_line) > cols {
+                trimmed_line.pop();
+            }
+
+            lines.push(trimmed_line);
+        }
+
+        let last_line_index = lines.len() - 1;
+        let last_line_width = ansi_width(&lines[last_line_index]);
+        let editor_start = lines.len().saturating_sub(1) * cols + last_line_width;
+        let editor_chars = self.editor.iter();
+        let first_line_width = cols.saturating_sub(last_line_width);
+
+        lines[last_line_index].extend(editor_chars.take(first_line_width));
+
+        for line in editor_chars.skip(first_line_width).chunks(cols).into_iter() {
             lines.push(String::from_iter(line));
+        }
+
+        let cursor_index = editor_start + self.editor.cursor();
+        let mut cursor_col = cursor_index % cols;
+        let mut cursor_row = (cursor_index - cursor_col) / cols;
+
+        if cursor_col == 0 && cursor_row > 0 && cursor_index > editor_start {
+            cursor_col = cols;
+            cursor_row -= 1;
         }
 
         let mut lines = lines.into_iter();
@@ -93,19 +146,9 @@ impl<'a> Prompt<'a> {
             )?;
         }
 
-        queue!(self.shell.stdout(), style::Print(last_line))?;
-
-        let cursor_index = prompt_len + self.editor.cursor();
-        let mut cursor_col = cursor_index % cols;
-        let mut cursor_row = (cursor_index - cursor_col) / cols;
-
-        if cursor_col == 0 && cursor_row > 0 {
-            cursor_col = cols;
-            cursor_row -= 1;
-        }
-
         queue!(
             self.shell.stdout(),
+            style::Print(last_line),
             cursor::RestorePosition,
             cursor::MoveToColumn(cursor_col as u16),
         )?;

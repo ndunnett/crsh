@@ -7,7 +7,7 @@ mod scanner;
 mod token;
 
 pub(crate) use ast::{Command, Node, Parameter, Redirection, Word};
-pub(crate) use iterator::ParsingIterator;
+pub use iterator::ParsingIterator;
 pub(crate) use parser::{ParseErrorVariant, Parser};
 pub(crate) use scanner::Scanner;
 pub(crate) use token::{Token, TokenVariant};
