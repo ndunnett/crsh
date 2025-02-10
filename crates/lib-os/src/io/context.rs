@@ -3,13 +3,13 @@ use std::io::{Read, Write};
 use super::{input::Input, output::Output};
 
 #[derive(Debug)]
-pub struct IOContext {
+pub struct Context {
     pub input: Input,
     pub output: Output,
     pub error: Output,
 }
 
-impl Default for IOContext {
+impl Default for Context {
     fn default() -> Self {
         Self {
             input: Input::Stdin(std::io::stdin()),
@@ -19,7 +19,7 @@ impl Default for IOContext {
     }
 }
 
-impl IOContext {
+impl Context {
     pub fn try_clone(&self) -> std::io::Result<Self> {
         Ok(Self {
             input: self.input.try_clone()?,

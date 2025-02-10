@@ -1,7 +1,6 @@
 mod builtin;
 mod config;
 mod error;
-mod io;
 mod parsing;
 mod shell;
 

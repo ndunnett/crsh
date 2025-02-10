@@ -3,7 +3,9 @@ use std::{env, path::Path};
 use clap::Parser;
 use sysexits::ExitCode;
 
-use crate::{builtin::Builtin, io::IOContext, Shell};
+use lib_os::{dir, io};
+
+use crate::{builtin::Builtin, Shell};
 
 #[derive(Parser)]
 #[group(multiple = false)]
@@ -21,7 +23,7 @@ struct Cli {
 }
 
 impl Builtin {
-    pub(super) fn cd(shell: &mut Shell, io: &mut IOContext, args: &[&str]) -> ExitCode {
+    pub(super) fn cd(shell: &mut Shell, io: &mut io::Context, args: &[&str]) -> ExitCode {
         let cli = match Cli::try_parse_from(["cd"].iter().chain(args)) {
             Ok(cli) => cli,
             Err(e) => {
@@ -38,12 +40,12 @@ impl Builtin {
 
         let path = if let Some(dir) = &cli.directory {
             if dir == "-" {
-                env::var("OLDPWD").unwrap_or_default()
+                shell.old_pwd.clone()
             } else {
                 dir.to_string()
             }
         } else {
-            env::var("HOME").unwrap_or_default()
+            dir::my_home()
         };
 
         if !Path::new(&path).is_dir() {
@@ -53,14 +55,14 @@ impl Builtin {
             return ExitCode::NoInput;
         }
 
-        let pwd = env::current_dir().unwrap_or_default();
-
         if let Err(e) = env::set_current_dir(&path) {
             io.eprintln(format!("cd: cannot access '{path}': {e}"));
             ExitCode::NoInput
         } else {
-            env::set_var("PWD", env::current_dir().unwrap_or_default());
-            env::set_var("OLDPWD", pwd);
+            shell.old_pwd = shell.pwd.clone();
+            shell.pwd = dir::current();
+            env::set_var("OLDPWD", &shell.old_pwd);
+            env::set_var("PWD", &shell.pwd);
             ExitCode::Ok
         }
     }

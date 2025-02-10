@@ -1,6 +1,8 @@
 use sysexits::ExitCode;
 
-use crate::{io::IOContext, Shell};
+use lib_os::io;
+
+use crate::Shell;
 
 mod cd;
 mod exit;
@@ -22,7 +24,7 @@ impl Builtin {
         }
     }
 
-    pub fn run(&self, shell: &mut Shell, io: &mut IOContext, args: &[&str]) -> ExitCode {
+    pub fn run(&self, shell: &mut Shell, io: &mut io::Context, args: &[&str]) -> ExitCode {
         let f = match self {
             Self::Cd => Self::cd,
             Self::Exit => Self::exit,

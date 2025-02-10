@@ -5,18 +5,18 @@ use std::{
 
 use sysexits::ExitCode;
 
-use crate::{
-    config::Config,
-    io::{IOContext, Input, Output},
-    parsing::Parser,
-};
+use lib_os::{dir, io};
+
+use crate::{config::Config, parsing::Parser};
 
 #[derive(Debug)]
 pub struct Shell {
-    pub(crate) io: IOContext,
+    pub(crate) io: io::Context,
     pub(crate) config: Config,
     pub(crate) exit_code: ExitCode,
     pub(crate) should_exit: bool,
+    pub(crate) pwd: String,
+    pub(crate) old_pwd: String,
     pub(crate) args: Vec<String>,
     pub(crate) _variables: HashMap<String, String>, // todo
 }
@@ -24,10 +24,12 @@ pub struct Shell {
 impl Default for Shell {
     fn default() -> Self {
         Self {
-            io: IOContext::default(),
+            io: io::Context::default(),
             config: Config::default(),
             exit_code: ExitCode::Ok,
             should_exit: false,
+            pwd: dir::current(),
+            old_pwd: String::new(),
             args: std::env::args().collect(),
             _variables: HashMap::new(),
         }
@@ -62,15 +64,15 @@ impl Shell {
         self.exit_code
     }
 
-    pub fn stdin(&mut self) -> &mut Input {
+    pub fn stdin(&mut self) -> &mut io::Input {
         &mut self.io.input
     }
 
-    pub fn stdout(&mut self) -> &mut Output {
+    pub fn stdout(&mut self) -> &mut io::Output {
         &mut self.io.output
     }
 
-    pub fn stderr(&mut self) -> &mut Output {
+    pub fn stderr(&mut self) -> &mut io::Output {
         &mut self.io.error
     }
 
@@ -91,30 +93,17 @@ impl Shell {
     }
 
     pub fn pretty_pwd(&self) -> Option<String> {
-        let home = format!(
-            "{}",
-            homedir::my_home()
-                .ok()
-                .unwrap_or_default()
-                .unwrap_or_default()
-                .to_string_lossy()
-        );
+        let home = dir::my_home();
 
-        let pwd = std::env::var("PWD").ok()?;
-
-        if pwd.starts_with(&home) {
-            Some(pwd.replacen(&home, "~", 1))
+        if self.pwd.starts_with(&home) {
+            Some(self.pwd.replacen(&home, "~", 1))
         } else {
-            Some(pwd)
+            Some(self.pwd.clone())
         }
     }
 
-    pub fn find_on_path<P: AsRef<Path>>(&self, keyword: P) -> Option<PathBuf> {
-        std::env::split_paths(&std::env::var_os("PATH")?).find(|dir| dir.join(&keyword).is_file())
-    }
-
     pub fn config_filepath<S: AsRef<Path>>(&self, filename: S) -> PathBuf {
-        let mut path = self.config.profile_path.clone();
+        let mut path = self.config.path.clone();
         path.push(filename);
         path
     }

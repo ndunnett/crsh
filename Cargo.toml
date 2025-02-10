@@ -13,6 +13,7 @@ repository = "https://github.com/ndunnett/crsh"
 
 [workspace.dependencies]
 lib_core = { path = "crates/lib-core" }
+lib_os = { path = "crates/lib-os" }
 lib_repl = { path = "crates/lib-repl" }
 
 clap = { version = "4.5.28", features = ["derive"] }

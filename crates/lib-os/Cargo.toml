@@ -1,0 +1,12 @@
+[package]
+name = "lib_os"
+version.workspace = true
+edition.workspace = true
+readme.workspace = true
+license.workspace = true
+homepage.workspace = true
+repository.workspace = true
+
+[dependencies]
+homedir = "0.3.4"
+os_pipe = "1.2.1"

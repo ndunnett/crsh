@@ -1,9 +1,11 @@
 use sysexits::ExitCode;
 
-use crate::{builtin::Builtin, io::IOContext, Shell};
+use lib_os::io;
+
+use crate::{builtin::Builtin, Shell};
 
 impl Builtin {
-    pub(super) fn exit(shell: &mut Shell, _io: &mut IOContext, args: &[&str]) -> ExitCode {
+    pub(super) fn exit(shell: &mut Shell, _io: &mut io::Context, args: &[&str]) -> ExitCode {
         shell.should_exit = true;
 
         args.first()

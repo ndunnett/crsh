@@ -2,15 +2,16 @@ use std::io::Read;
 
 use sysexits::ExitCode;
 
+use lib_os::{dir, io};
+
 use crate::{
     builtin::Builtin,
-    io::IOContext,
     parsing::{Command, Node, Parameter, Redirection, Word},
     Result, Shell,
 };
 
 impl Shell {
-    pub fn execute(&mut self, ctx: Option<IOContext>, node: &Node) -> Result<ExitCode> {
+    pub fn execute(&mut self, ctx: Option<io::Context>, node: &Node) -> Result<ExitCode> {
         if self.should_exit {
             return Ok(self.exit_code);
         }
@@ -34,9 +35,9 @@ impl Shell {
             Word::String(s) => Ok(s.to_string()),
             Word::Parameter(p) => self.parameter(p),
             Word::Command { node } => {
-                let (mut reader, writer) = os_pipe::pipe()?;
+                let (mut reader, writer) = io::pipe()?;
 
-                let ctx = IOContext {
+                let ctx = io::Context {
                     input: self.io.input.try_clone()?,
                     output: writer.into(),
                     error: self.io.error.try_clone()?,
@@ -62,18 +63,14 @@ impl Shell {
         Ok(match p {
             Parameter::String(s) => std::env::var(s).unwrap_or_default(),
             Parameter::Number(n) => self.args.get(*n).cloned().unwrap_or_default(),
-            Parameter::OtherHome(user) => homedir::home(self.word(user)?)?
-                .map(|s| format!("{}", s.to_string_lossy()))
-                .unwrap_or_default(),
-            Parameter::MyHome => homedir::my_home()?
-                .map(|s| format!("{}", s.to_string_lossy()))
-                .unwrap_or_default(),
+            Parameter::OtherHome(user) => dir::home(&self.word(user)?),
+            Parameter::MyHome => dir::my_home(),
         })
     }
 
     fn redirection(
         &mut self,
-        ctx: Option<IOContext>,
+        ctx: Option<io::Context>,
         _redirections: &[Redirection],
         node: &Node,
     ) -> Result<ExitCode> {
@@ -81,7 +78,12 @@ impl Shell {
         self.execute(ctx, node)
     }
 
-    fn command(&mut self, ctx: Option<IOContext>, name: &Word, args: &[Word]) -> Result<ExitCode> {
+    fn command(
+        &mut self,
+        ctx: Option<io::Context>,
+        name: &Word,
+        args: &[Word],
+    ) -> Result<ExitCode> {
         if self.should_exit {
             return Ok(self.exit_code);
         }
@@ -105,8 +107,8 @@ impl Shell {
 
         if let Some(builtin) = Builtin::get(&name) {
             Ok(builtin.run(self, &mut io, &args))
-        } else if self.find_on_path(&name).is_some() {
-            let mut cmd = std::process::Command::new(name);
+        } else if let Some(path) = dir::find_on_path(&name) {
+            let mut cmd = std::process::Command::new(path);
 
             let mut child = cmd
                 .stdin(io.input.try_clone()?)
@@ -130,7 +132,7 @@ impl Shell {
         }
     }
 
-    fn list(&mut self, ctx: Option<IOContext>, nodes: &[Node]) -> Result<ExitCode> {
+    fn list(&mut self, ctx: Option<io::Context>, nodes: &[Node]) -> Result<ExitCode> {
         let mut exit_code = ExitCode::Ok;
 
         if let Some(ref ctx) = ctx {
@@ -146,7 +148,7 @@ impl Shell {
         Ok(exit_code)
     }
 
-    fn pipeline(&mut self, ctx: Option<IOContext>, nodes: &[Node]) -> Result<ExitCode> {
+    fn pipeline(&mut self, ctx: Option<io::Context>, nodes: &[Node]) -> Result<ExitCode> {
         match nodes.len() {
             0 => Ok(ExitCode::Ok),
             1 => self.execute(ctx, &nodes[0]),
@@ -159,10 +161,10 @@ impl Shell {
                 };
 
                 let first_ctx = {
-                    let (reader, writer) = os_pipe::pipe()?;
+                    let (reader, writer) = io::pipe()?;
                     pipes.push((reader.try_clone()?, writer.try_clone()?));
 
-                    IOContext {
+                    io::Context {
                         input: io.input.try_clone()?,
                         output: writer.into(),
                         error: io.error.try_clone()?,
@@ -174,10 +176,10 @@ impl Shell {
                 for node in &nodes[1..len - 1] {
                     let new_ctx = {
                         let (last_reader, _) = pipes.pop().unwrap();
-                        let (reader, writer) = os_pipe::pipe()?;
+                        let (reader, writer) = io::pipe()?;
                         pipes.push((reader.try_clone()?, writer.try_clone()?));
 
-                        IOContext {
+                        io::Context {
                             input: last_reader.into(),
                             output: writer.into(),
                             error: io.error.try_clone()?,
@@ -190,7 +192,7 @@ impl Shell {
                 let last_ctx = {
                     let (reader, _) = pipes.pop().unwrap();
 
-                    IOContext {
+                    io::Context {
                         input: reader.into(),
                         output: io.output.try_clone()?,
                         error: io.error.try_clone()?,
@@ -204,7 +206,7 @@ impl Shell {
 
     fn logical(
         &mut self,
-        ctx: Option<IOContext>,
+        ctx: Option<io::Context>,
         and: bool,
         left: &Node,
         right: &Node,

@@ -69,9 +69,6 @@ pub enum Error {
 
     #[from]
     Io(std::io::Error),
-
-    #[from]
-    Home(homedir::GetHomeError),
 }
 
 impl std::error::Error for Error {
@@ -80,7 +77,6 @@ impl std::error::Error for Error {
             Error::Adhoc { .. } => None,
             Error::Io(error) => error.source(),
             Error::Source(error) => error.source(),
-            Error::Home(error) => error.source(),
         }
     }
 }

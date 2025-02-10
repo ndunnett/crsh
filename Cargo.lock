@@ -252,9 +252,16 @@ dependencies = [
  "ariadne",
  "clap",
  "derive_more",
+ "lib_os",
+ "sysexits",
+]
+
+[[package]]
+name = "lib_os"
+version = "0.0.1"
+dependencies = [
  "homedir",
  "os_pipe",
- "sysexits",
 ]
 
 [[package]]
