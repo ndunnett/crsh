@@ -1,8 +1,4 @@
-use std::{
-    path::{Path, PathBuf},
-    slice::Iter,
-    sync::OnceLock,
-};
+use std::path::{Path, PathBuf};
 
 #[cfg(not(target_os = "windows"))]
 pub fn find_on_path<P: AsRef<Path>>(keyword: P) -> Option<PathBuf> {
@@ -10,6 +6,9 @@ pub fn find_on_path<P: AsRef<Path>>(keyword: P) -> Option<PathBuf> {
         .map(|dir| dir.join(&keyword))
         .find(|path| path.is_file())
 }
+
+#[cfg(target_os = "windows")]
+use std::{slice::Iter, sync::OnceLock};
 
 #[cfg(target_os = "windows")]
 pub fn find_on_path<P: AsRef<Path>>(keyword: P) -> Option<PathBuf> {
