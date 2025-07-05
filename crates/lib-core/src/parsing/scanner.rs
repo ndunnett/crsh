@@ -275,10 +275,10 @@ impl Scanner<'_> {
     fn blob(&mut self) -> Token {
         self.take_until(|c| c.is_whitespace() || Self::META_CHARS.contains(c));
 
-        if self.mode_stack.last() == Some(&ScanMode::ReserveWord) {
-            if let Some(token) = self.reserved_word() {
-                return token;
-            }
+        if self.mode_stack.last() == Some(&ScanMode::ReserveWord)
+            && let Some(token) = self.reserved_word()
+        {
+            return token;
         }
 
         self.delimit_token(TokenVariant::Blob)

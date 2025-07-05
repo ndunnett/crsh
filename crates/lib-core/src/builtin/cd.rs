@@ -5,7 +5,7 @@ use sysexits::ExitCode;
 
 use lib_os::{dir, io};
 
-use crate::{builtin::Builtin, Shell};
+use crate::{Shell, builtin::Builtin};
 
 #[derive(Parser)]
 #[group(multiple = false)]
@@ -61,8 +61,12 @@ impl Builtin {
         } else {
             shell.old_pwd = shell.pwd.clone();
             shell.pwd = dir::current();
-            env::set_var("OLDPWD", &shell.old_pwd);
-            env::set_var("PWD", &shell.pwd);
+
+            unsafe {
+                env::set_var("OLDPWD", &shell.old_pwd);
+                env::set_var("PWD", &shell.pwd);
+            }
+
             ExitCode::Ok
         }
     }

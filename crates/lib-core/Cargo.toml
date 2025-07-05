@@ -9,7 +9,7 @@ repository.workspace = true
 
 [dependencies]
 lib_os = { workspace = true }
-ariadne = "0.5.0"
+ariadne = "0.5.1"
 clap = { workspace = true }
 derive_more = { version = "2.0.1", features = ["from"] }
 sysexits = { workspace = true }
