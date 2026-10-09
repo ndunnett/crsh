@@ -1,17 +1,28 @@
 {
   "build": {
-    "dockerfile": "Dockerfile"
+    "dockerfile": "Dockerfile",
+    "args": {
+      "USERNAME": "dev",
+      "WORKSPACE": "/ws",
+      "IMAGE_VARIANT": "trixie",
+      "RUST_VERSION": "1.99",
+      "UV_VERSION": "0.12",
+      "PYTHON_VERSION": "3.14"
+    }
   },
-  "mounts": [
-    "source=${localWorkspaceFolder},target=/ws,type=bind,consistency=cached"
-  ],
+  "remoteUser": "dev",
+  "workspaceMount": "source=${localWorkspaceFolder},target=/ws,type=bind,consistency=cached",
   "workspaceFolder": "/ws",
   "customizations": {
     "vscode": {
       "extensions": [
         "rust-lang.rust-analyzer",
         "tamasfe.even-better-toml",
-        "fill-labs.dependi"
+        "fill-labs.dependi",
+        "davidanson.vscode-markdownlint",
+        "nefrob.vscode-just-syntax",
+        "charliermarsh.ruff",
+        "astral-sh.ty"
       ]
     }
   }
