@@ -6,15 +6,11 @@ use std::{
 
 use itertools::Itertools;
 
+#[derive(Default)]
 pub enum Source {
+    #[default]
     None,
     File(PathBuf),
-}
-
-impl Default for Source {
-    fn default() -> Self {
-        Self::None
-    }
 }
 
 impl From<PathBuf> for Source {

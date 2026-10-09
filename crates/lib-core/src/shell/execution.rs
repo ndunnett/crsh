@@ -5,9 +5,9 @@ use sysexits::ExitCode;
 use lib_os::{dir, io};
 
 use crate::{
+    Result, Shell,
     builtin::Builtin,
     parsing::{Command, Node, Parameter, Redirection, Word},
-    Result, Shell,
 };
 
 impl Shell {

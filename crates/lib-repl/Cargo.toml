@@ -10,7 +10,7 @@ repository.workspace = true
 [dependencies]
 ansi-width = "0.1.0"
 crossterm = "0.29.0"
-ctrlc = "3.4.7"
+ctrlc = "3.5.2"
 lib_core = { workspace = true }
-itertools = "0.14.0"
+itertools = "0.15.0"
 sysexits = { workspace = true }

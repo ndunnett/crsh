@@ -2,7 +2,7 @@ use sysexits::ExitCode;
 
 use lib_os::{dir, io};
 
-use crate::{builtin::Builtin, Shell};
+use crate::{Shell, builtin::Builtin};
 
 impl Builtin {
     pub(super) fn which(_shell: &mut Shell, io: &mut io::Context, args: &[&str]) -> ExitCode {

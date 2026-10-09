@@ -9,4 +9,4 @@ repository.workspace = true
 
 [dependencies]
 homedir = "0.3.6"
-os_pipe = "1.2.2"
+os_pipe = "1.2.3"

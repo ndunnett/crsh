@@ -23,12 +23,10 @@ impl SourceErrorVariant {
             SourceErrorVariant::Parse(ParseErrorVariant::UnmatchedParenthesis) => {
                 "Unmatched parenthesis"
             }
-            SourceErrorVariant::Parse(ParseErrorVariant::UnmatchedBrace) => {
-                "Unmatched brace"
-            },
+            SourceErrorVariant::Parse(ParseErrorVariant::UnmatchedBrace) => "Unmatched brace",
             SourceErrorVariant::Parse(ParseErrorVariant::InvalidName) => {
                 "Name must not start with a number and must consist only of alphanumeric characters or '_'"
-            },
+            }
         }
     }
 }

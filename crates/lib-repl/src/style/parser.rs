@@ -2,8 +2,8 @@ use crossterm::style::Color;
 use lib_core::ParsingIterator;
 
 use crate::style::{
-    scanner::{Scanner, Token},
     AppliedStyle, Condition, Function, Style,
+    scanner::{Scanner, Token},
 };
 
 impl Style {

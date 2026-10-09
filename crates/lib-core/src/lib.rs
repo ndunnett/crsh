@@ -5,5 +5,5 @@ mod parsing;
 mod shell;
 
 pub use error::Result;
-pub use shell::Shell;
 pub use parsing::ParsingIterator;
+pub use shell::Shell;

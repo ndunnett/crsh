@@ -1,7 +1,7 @@
 [workspace]
 default-members = ["crates/crsh"]
 members = ["crates/*"]
-resolver = "2"
+resolver = "3"
 
 [workspace.package]
 version = "0.0.1"
@@ -16,8 +16,8 @@ lib_core = { path = "crates/lib-core" }
 lib_os = { path = "crates/lib-os" }
 lib_repl = { path = "crates/lib-repl" }
 
-clap = { version = "4.5.40", features = ["derive"] }
-sysexits = "0.9.0"
+clap = { version = "4.6.7", features = ["derive"] }
+sysexits = "0.10.0"                                 # newer versions remove TryFrom<i32>
 
 [profile.dev]
 lto = "off"
