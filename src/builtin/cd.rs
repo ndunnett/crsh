@@ -1,31 +1,38 @@
 use std::{env, path::Path};
 
-use clap::Parser;
+use argh::FromArgs;
 use sysexits::ExitCode;
 
 use crate::{Shell, builtin::Builtin, dir, io};
 
-#[derive(Parser)]
-#[group(multiple = false)]
+#[derive(FromArgs)]
+/// Change the current working directory.
 struct Cli {
-    /// Pathname of the new working directory
+    /// pathname of the new working directory
+    #[argh(positional)]
     directory: Option<String>,
 
-    /// Handle the operand dot-dot logically
-    #[arg(short = 'L', group = "dotdot")]
+    /// handle the operand dot-dot logically
+    #[argh(switch, short = 'L')]
     logical: bool,
 
-    /// Handle the operand dot-dot physically
-    #[arg(short = 'P', group = "dotdot")]
+    /// handle the operand dot-dot physically
+    #[argh(switch, short = 'P')]
     physical: bool,
 }
 
 impl Builtin {
     pub(super) fn cd(shell: &mut Shell, io: &mut io::Context, args: &[&str]) -> ExitCode {
-        let cli = match Cli::try_parse_from(std::iter::once(&"cd").chain(args)) {
+        let args = if args == ["-"] {
+            &[shell.old_pwd.as_str()]
+        } else {
+            args
+        };
+
+        let cli = match Cli::from_args(&["cd"], args) {
             Ok(cli) => cli,
             Err(e) => {
-                shell.io.eprintln(e.to_string());
+                shell.io.eprintln(e.output);
                 return ExitCode::Usage;
             }
         };
@@ -36,15 +43,7 @@ impl Builtin {
             return ExitCode::Usage;
         }
 
-        let path = if let Some(dir) = &cli.directory {
-            if dir == "-" {
-                shell.old_pwd.clone()
-            } else {
-                dir.clone()
-            }
-        } else {
-            dir::my_home()
-        };
+        let path = cli.directory.unwrap_or_else(dir::my_home);
 
         if !Path::new(&path).is_dir() {
             io.eprintln(format!(

@@ -1,145 +1,227 @@
 use std::{
     env, fs,
     io::{self, IsTerminal, Read},
+    path::PathBuf,
 };
 
-use clap::{Parser, ValueEnum};
+use argh::{ArgsInfo, FromArgValue, FromArgs};
+use itertools::Itertools;
 use sysexits::ExitCode;
 
 use crsh::{Prompt, Shell};
 
-#[derive(Parser, Debug)]
-#[command(version = env!("VERSION"))]
-#[command(after_help = ShellOption::display_possible_options())]
-#[command(about, long_about = None)]
-#[group(multiple = false)]
+#[derive(Debug, FromArgs, ArgsInfo)]
+#[argh(description = "Crappy Rust SHell.")]
 struct Cli {
-    /// Execute script at path
-    #[arg(group = "input")]
+    /// execute script at path
+    #[argh(positional)]
     path: Option<String>,
 
-    /// Run command non-interactively
-    #[arg(short, long, group = "input")]
+    /// run command non-interactively
+    #[argh(option, short = 'c')]
     command: Option<String>,
 
-    /// Input from stdin
-    #[arg(long, hide = true, group = "input")]
+    /// input from stdin
+    #[argh(switch, hidden_help)]
     stdin: bool,
 
-    /// Name of history file to use
-    #[arg(short = 'H', long, value_name = "FILENAME")]
-    history_file: Option<String>,
+    /// path to the history file to use
+    #[argh(option, short = 'H', arg_name = "PATH")]
+    history: Option<String>,
 
-    /// Set shell option
-    #[arg(
-        value_enum,
-        short = 'o',
-        value_delimiter = ',',
-        hide_possible_values = true,
-        value_name = "OPTION"
-    )]
-    set: Vec<ShellOption>,
+    /// set shell option
+    #[argh(option, short = 'o', arg_name = "OPTION", from_str_fn(parse_options))]
+    set: Vec<Vec<ShellOption>>,
 
-    /// Unset shell option
-    #[arg(
-        value_enum,
-        short = 'u',
-        value_delimiter = ',',
-        hide_possible_values = true,
-        value_name = "OPTION"
-    )]
-    unset: Vec<ShellOption>,
+    /// unset shell option
+    #[argh(option, short = 'u', arg_name = "OPTION", from_str_fn(parse_options))]
+    unset: Vec<Vec<ShellOption>>,
+
+    /// display version information
+    #[argh(switch, short = 'V')]
+    version: bool,
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
-enum ShellOption {
-    /// Setting shell options not yet implemented
-    None,
+macro_rules! shell_options {
+    ($($id:ident : $description:expr),* $(,)?) => {
+        #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, FromArgValue)]
+        enum ShellOption {
+            $($id,)*
+        }
+
+        impl ShellOption {
+            const fn display_possible_options() -> &'static str {
+                concat!("Shell Options:\n", $("- ", stringify!($id), ": ", $description, "\n",)*)
+            }
+        }
+    };
 }
 
-impl ShellOption {
-    fn display_possible_options() -> String {
-        let options = Self::value_variants()
-            .iter()
-            .filter_map(clap::ValueEnum::to_possible_value)
-            .map(|v| format!("- {}: {}", v.get_name(), v.get_help().unwrap_or_default()));
+shell_options!(None: "shell options not yet implemented");
 
-        std::iter::once("Settable shell options:".to_string())
-            .chain(options)
-            .collect::<Vec<_>>()
-            .join("\n  ")
-    }
+fn parse_options(value: &str) -> Result<Vec<ShellOption>, String> {
+    value.split(',').map(ShellOption::from_arg_value).collect()
+}
+
+fn flatten_options(options: Vec<Vec<ShellOption>>) -> Vec<ShellOption> {
+    options
+        .into_iter()
+        .flatten()
+        .sorted_unstable()
+        .dedup()
+        .collect()
 }
 
 #[derive(Clone, PartialEq, Eq)]
 pub enum ShellMode {
-    Interactive,
+    Interactive(Option<String>),
     Read,
     Command(String),
     Script(String),
 }
 
-impl Cli {
-    pub fn parse_shell_mode(&self) -> ShellMode {
-        if self.stdin {
-            ShellMode::Read
-        } else if let Some(cmd) = &self.command {
-            ShellMode::Command(cmd.into())
-        } else if let Some(path) = &self.path {
-            ShellMode::Script(path.into())
+impl From<&Cli> for ShellMode {
+    fn from(cli: &Cli) -> Self {
+        if cli.stdin {
+            Self::Read
+        } else if let Some(cmd) = &cli.command {
+            Self::Command(cmd.into())
+        } else if let Some(path) = &cli.path {
+            Self::Script(path.into())
         } else {
-            ShellMode::Interactive
+            Self::Interactive(cli.history.clone())
         }
     }
 }
 
-impl From<Cli> for Shell {
-    fn from(_cli: Cli) -> Self {
-        Self::default()
+struct ShellContext {
+    mode: ShellMode,
+    #[expect(unused)]
+    set: Vec<ShellOption>,
+    #[expect(unused)]
+    unset: Vec<ShellOption>,
+}
+
+impl From<Cli> for ShellContext {
+    fn from(cli: Cli) -> Self {
+        Self {
+            mode: ShellMode::from(&cli),
+            set: flatten_options(cli.set),
+            unset: flatten_options(cli.unset),
+        }
+    }
+}
+
+impl ShellContext {
+    fn invoke(self) -> ExitCode {
+        // TODO: implement shell options + config loading
+        let mut shell = Shell::default();
+
+        match self.mode {
+            ShellMode::Interactive(history) => {
+                let history_source =
+                    history.map_or_else(|| shell.config_filepath(".crsh-history"), PathBuf::from);
+
+                let mut prompt = Prompt::new(&mut shell).with_history(history_source);
+
+                match prompt.repl() {
+                    Ok(code) => code,
+                    Err(e) => {
+                        eprintln!("crsh: prompt error: {e:#?}");
+                        ExitCode::OsErr
+                    }
+                }
+            }
+            ShellMode::Read => {
+                let mut input = String::new();
+
+                match io::stdin().read_to_string(&mut input) {
+                    Ok(_) => shell.interpret(&input),
+                    Err(e) => {
+                        eprintln!("crsh: failed to read stdin: {e}");
+                        ExitCode::IoErr
+                    }
+                }
+            }
+            ShellMode::Command(input) => shell.interpret(&input),
+            ShellMode::Script(path) => match fs::read_to_string(&path) {
+                Ok(script) => shell.interpret(&script),
+                Err(e) => {
+                    eprintln!("crsh: failed to run script at \"{path}\": {e}");
+                    ExitCode::NoInput
+                }
+            },
+        }
+    }
+}
+
+enum Invocation {
+    Shell(ShellContext),
+    Version,
+    Help(String),
+    UsageError(String),
+}
+
+impl Invocation {
+    fn from_env() -> Self {
+        let args = env::args().skip(1).collect::<Vec<_>>();
+        let args = args.iter().map(String::as_str).collect::<Vec<_>>();
+        Self::from_args(&args)
+    }
+
+    fn from_args(args: &[&str]) -> Self {
+        let mut cli = match Cli::from_args(&["crsh"], args) {
+            Ok(cli) => cli,
+            Err(exit) => {
+                if exit.status.is_ok() {
+                    return Self::Help(format!(
+                        "{}\n{}",
+                        exit.output,
+                        ShellOption::display_possible_options()
+                    ));
+                }
+
+                return Self::UsageError(exit.output);
+            }
+        };
+
+        if cli.version {
+            return Self::Version;
+        }
+
+        if !io::stdin().is_terminal() {
+            cli.stdin = true;
+        }
+
+        let inputs = usize::from(cli.path.is_some())
+            + usize::from(cli.command.is_some())
+            + usize::from(cli.stdin);
+
+        if inputs > 1 {
+            return Self::UsageError(
+                "crsh: specify at most one of a script path, --command, or piped input to stdin"
+                    .to_string(),
+            );
+        }
+
+        Self::Shell(ShellContext::from(cli))
     }
 }
 
 fn main() -> ExitCode {
-    let mut cli = Cli::parse();
-
-    if !io::stdin().is_terminal() {
-        cli.stdin = true;
-    }
-
-    let mode = cli.parse_shell_mode();
-    let mut shell = Shell::from(cli);
-
-    match mode {
-        ShellMode::Interactive => {
-            let history_source = shell.config_filepath(".crsh-history");
-            let mut prompt = Prompt::new(&mut shell).with_history(history_source);
-
-            match prompt.repl() {
-                Ok(code) => code,
-                Err(e) => {
-                    eprintln!("crsh: prompt error: {e:#?}");
-                    ExitCode::OsErr
-                }
-            }
+    match Invocation::from_env() {
+        Invocation::Shell(shell_context) => shell_context.invoke(),
+        Invocation::Version => {
+            println!("crsh v{}", env!("VERSION"));
+            ExitCode::Ok
         }
-        ShellMode::Read => {
-            let mut input = String::new();
-
-            match io::stdin().read_to_string(&mut input) {
-                Ok(_) => shell.interpret(&input),
-                Err(e) => {
-                    eprintln!("crsh: failed to read stdin: {e}");
-                    ExitCode::IoErr
-                }
-            }
+        Invocation::Help(msg) => {
+            println!("{msg}");
+            ExitCode::Ok
         }
-        ShellMode::Command(input) => shell.interpret(&input),
-        ShellMode::Script(path) => match fs::read_to_string(&path) {
-            Ok(script) => shell.interpret(&script),
-            Err(e) => {
-                eprintln!("crsh: failed to run script at \"{path}\": {e}");
-                ExitCode::NoInput
-            }
-        },
+        Invocation::UsageError(msg) => {
+            eprintln!("{msg}");
+            ExitCode::Usage
+        }
     }
 }
