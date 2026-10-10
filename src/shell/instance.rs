@@ -38,8 +38,6 @@ impl Shell {
     pub fn interpret(&mut self, input: &str) -> ExitCode {
         match Parser::new(input).parse() {
             Ok(ast) => {
-                println!("\n{ast:#?}\n");
-
                 match self.execute(None, &ast) {
                     Ok(code) => {
                         self.set_exit_code(code);

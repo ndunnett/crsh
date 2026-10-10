@@ -71,15 +71,6 @@ impl ParsingIterator for Parser<'_> {
 
         self.current_token_value = self.next_token_value.take();
         self.next_token_value = Some(self.scanner.next_token());
-
-        if let Some(t) = self.current_token_value.clone() {
-            println!(
-                "{:?} -> {:?}",
-                self.lexeme(t.span).unwrap_or_default(),
-                t.variant
-            );
-        }
-
         self.current_token_value.as_ref()
     }
 
