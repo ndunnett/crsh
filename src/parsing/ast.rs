@@ -5,32 +5,32 @@ pub enum Node<'source> {
     },
     Redirection {
         redirections: Vec<Redirection>,
-        node: Box<Node<'source>>,
+        node: Box<Self>,
     },
     List {
-        nodes: Vec<Node<'source>>,
+        nodes: Vec<Self>,
     },
     Pipeline {
-        nodes: Vec<Node<'source>>,
+        nodes: Vec<Self>,
     },
     Subshell {
-        node: Box<Node<'source>>,
+        node: Box<Self>,
     },
     Or {
-        left: Box<Node<'source>>,
-        right: Box<Node<'source>>,
+        left: Box<Self>,
+        right: Box<Self>,
     },
     And {
-        left: Box<Node<'source>>,
-        right: Box<Node<'source>>,
+        left: Box<Self>,
+        right: Box<Self>,
     },
     While {
-        predicate: Box<Node<'source>>,
-        body: Box<Node<'source>>,
+        predicate: Box<Self>,
+        body: Box<Self>,
     },
     Until {
-        predicate: Box<Node<'source>>,
-        body: Box<Node<'source>>,
+        predicate: Box<Self>,
+        body: Box<Self>,
     },
     Arithmetic,  // todo
     Conditional, // todo
@@ -49,7 +49,7 @@ pub enum Word<'source> {
     String(&'source str),
     Parameter(Parameter<'source>),
     Command { node: Box<Node<'source>> },
-    Compound { words: Vec<Word<'source>> },
+    Compound { words: Vec<Self> },
 }
 
 #[derive(Debug, Clone)]

@@ -27,12 +27,12 @@ impl From<os_pipe::PipeReader> for Input {
 }
 
 impl From<Input> for Stdio {
-    fn from(input: Input) -> Stdio {
+    fn from(input: Input) -> Self {
         match input {
-            Input::Null => Stdio::null(),
+            Input::Null => Self::null(),
             Input::Pipe(pipe) => pipe.into(),
             Input::File(file) => file.into(),
-            Input::Stdin(_) => Stdio::inherit(),
+            Input::Stdin(_) => Self::inherit(),
         }
     }
 }

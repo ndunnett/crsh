@@ -36,7 +36,7 @@ impl Editor {
         self.history = History::new(source.into());
     }
 
-    pub fn cursor(&self) -> usize {
+    pub const fn cursor(&self) -> usize {
         self.cursor
     }
 
@@ -103,7 +103,7 @@ impl Editor {
                     return Ok(Signal::End);
                 }
                 _ => {}
-            };
+            }
         }
 
         Ok(Signal::None)
@@ -116,6 +116,8 @@ pub struct BufferIterator<'a> {
     index: usize,
 }
 
+// TODO: come up with a better solution for iterating the buffer
+#[expect(clippy::copy_iterator)]
 impl Iterator for BufferIterator<'_> {
     type Item = char;
 

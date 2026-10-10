@@ -13,6 +13,8 @@ pub enum Source {
     File(PathBuf),
 }
 
+// TODO: rework getting `Source` from a file path
+#[expect(clippy::fallible_impl_from)]
 impl From<PathBuf> for Source {
     fn from(file_path: PathBuf) -> Self {
         _ = fs::create_dir_all(file_path.parent().unwrap());
@@ -50,13 +52,9 @@ impl Source {
             Self::File(path) => match fs::OpenOptions::new().read(true).open(path) {
                 Ok(mut file) => {
                     let mut buffer = String::new();
-                    let _ = file.read_to_string(&mut buffer);
+                    file.read_to_string(&mut buffer)?;
 
-                    Ok(buffer
-                        .trim()
-                        .split('\n')
-                        .map(|line| line.chars().collect())
-                        .collect())
+                    Ok(buffer.lines().map(|line| line.chars().collect()).collect())
                 }
                 Err(_) => Ok(Vec::new()),
             },
@@ -118,7 +116,7 @@ impl History {
 
     pub fn push(&mut self, buffer: Vec<char>) {
         if self.buffers.last() != Some(&buffer) {
-            self.buffers.push(buffer.clone());
+            self.buffers.push(buffer);
 
             if self.buffers.len() > Self::MAX_SIZE {
                 self.buffers.remove(0);

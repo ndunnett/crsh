@@ -2,7 +2,7 @@ use std::str::Chars;
 
 use crate::ParsingIterator;
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Token {
     Quoted(String),
     Blob(String),
@@ -109,7 +109,6 @@ impl<'source> Scanner<'source> {
                 }
                 c if c.is_whitespace() => {
                     self.token_start = self.token_end;
-                    continue;
                 }
                 _ => {
                     self.take_until(|c| c.is_whitespace() || Self::PUNCTUATION.contains(c));

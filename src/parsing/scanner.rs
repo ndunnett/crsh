@@ -56,7 +56,7 @@ impl<'source> Scanner<'source> {
         }
     }
 
-    pub fn source(&self) -> &'source str {
+    pub const fn source(&self) -> &'source str {
         self.source
     }
 
@@ -124,7 +124,7 @@ impl Scanner<'_> {
     const META_CHARS: &'static str = "|&;()<>";
     const DOUBLE_QUOTED_CHARS: &'static str = "$`\"\\";
 
-    fn delimit_token(&mut self, variant: TokenVariant) -> Token {
+    const fn delimit_token(&mut self, variant: TokenVariant) -> Token {
         let span = self.token_start..self.token_end;
         let line = self.line;
         let column = self.column + self.token_start - self.token_end;
@@ -159,7 +159,6 @@ impl Scanner<'_> {
                 }
                 '#' => {
                     self.comment();
-                    continue;
                 }
                 '\n' => return self.delimit_token(TokenVariant::Newline),
                 ';' => return self.delimit_token(TokenVariant::Semicolon),
@@ -171,7 +170,6 @@ impl Scanner<'_> {
                 '|' => return self.bar(),
                 c if c.is_whitespace() => {
                     self.token_start = self.token_end;
-                    continue;
                 }
                 _ => return self.blob(),
             }
@@ -196,7 +194,6 @@ impl Scanner<'_> {
                 '\\' => todo!("implement character escapes"),
                 c if c.is_whitespace() => {
                     self.token_start = self.token_end;
-                    continue;
                 }
                 _ => {
                     self.take_until(|c| Self::DOUBLE_QUOTED_CHARS.contains(c));

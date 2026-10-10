@@ -19,7 +19,7 @@ impl Shell {
             Node::Command {
                 command: Command { name, args },
             } => self.command(ctx, name, args),
-            Node::List { nodes } => self.list(ctx, nodes),
+            Node::List { nodes } => self.list(ctx.as_ref(), nodes),
             Node::Pipeline { nodes } => self.pipeline(ctx, nodes),
             Node::Or { left, right } => self.logical(ctx, false, left, right),
             Node::And { left, right } => self.logical(ctx, true, left, right),
@@ -96,7 +96,7 @@ impl Shell {
 
         let args = args_owned
             .iter()
-            .map(|arg| arg.as_str())
+            .map(std::string::String::as_str)
             .collect::<Vec<_>>();
 
         let mut io = match ctx {
@@ -131,10 +131,10 @@ impl Shell {
         }
     }
 
-    fn list(&mut self, ctx: Option<io::Context>, nodes: &[Node]) -> Result<ExitCode> {
+    fn list(&mut self, ctx: Option<&io::Context>, nodes: &[Node]) -> Result<ExitCode> {
         let mut exit_code = ExitCode::Ok;
 
-        if let Some(ref ctx) = ctx {
+        if let Some(ctx) = ctx {
             for node in nodes {
                 exit_code = self.execute(ctx.try_clone().ok(), node)?;
             }

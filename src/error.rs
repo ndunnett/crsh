@@ -12,19 +12,13 @@ pub enum SourceErrorVariant {
 }
 
 impl SourceErrorVariant {
-    fn human_description(&self) -> &str {
+    const fn human_description(&self) -> &str {
         match self {
-            SourceErrorVariant::Parse(ParseErrorVariant::IncompleteParse) => {
-                "Failed to parse remaining input"
-            }
-            SourceErrorVariant::Parse(ParseErrorVariant::UnexpectedTokens) => {
-                "Unexpected tokens in expression"
-            }
-            SourceErrorVariant::Parse(ParseErrorVariant::UnmatchedParenthesis) => {
-                "Unmatched parenthesis"
-            }
-            SourceErrorVariant::Parse(ParseErrorVariant::UnmatchedBrace) => "Unmatched brace",
-            SourceErrorVariant::Parse(ParseErrorVariant::InvalidName) => {
+            Self::Parse(ParseErrorVariant::IncompleteParse) => "Failed to parse remaining input",
+            Self::Parse(ParseErrorVariant::UnexpectedTokens) => "Unexpected tokens in expression",
+            Self::Parse(ParseErrorVariant::UnmatchedParenthesis) => "Unmatched parenthesis",
+            Self::Parse(ParseErrorVariant::UnmatchedBrace) => "Unmatched brace",
+            Self::Parse(ParseErrorVariant::InvalidName) => {
                 "Name must not start with a number and must consist only of alphanumeric characters or '_'"
             }
         }
@@ -72,9 +66,9 @@ pub enum Error {
 impl std::error::Error for Error {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match self {
-            Error::Adhoc { .. } => None,
-            Error::Io(error) => error.source(),
-            Error::Source(error) => error.source(),
+            Self::Adhoc { .. } => None,
+            Self::Io(error) => error.source(),
+            Self::Source(error) => error.source(),
         }
     }
 }

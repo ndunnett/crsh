@@ -24,7 +24,7 @@ pub struct Prompt<'a> {
 }
 
 impl<'a> Prompt<'a> {
-    pub fn new(shell: &'a mut Shell) -> Prompt<'a> {
+    pub fn new(shell: &'a mut Shell) -> Self {
         Prompt {
             shell,
             style: Style::default(),
@@ -32,7 +32,8 @@ impl<'a> Prompt<'a> {
         }
     }
 
-    pub fn with_history<S: Into<Source>>(mut self, source: S) -> Prompt<'a> {
+    #[must_use]
+    pub fn with_history<S: Into<Source>>(mut self, source: S) -> Self {
         self.editor.set_history(source);
         self
     }
@@ -116,7 +117,7 @@ impl<'a> Prompt<'a> {
 
         lines[last_line_index].extend(editor_chars.take(first_line_width));
 
-        for line in editor_chars.skip(first_line_width).chunks(cols).into_iter() {
+        for line in &editor_chars.skip(first_line_width).chunks(cols) {
             lines.push(String::from_iter(line));
         }
 
@@ -204,7 +205,6 @@ impl<'a> Prompt<'a> {
                 Ok(Signal::Interrupt) => {
                     writeln!(self.shell.stdout(), "^C")?;
                     self.shell.set_exit_code(ExitCode::DataErr);
-                    continue;
                 }
                 Ok(Signal::End) => {
                     writeln!(self.shell.stdout(), "^D")?;

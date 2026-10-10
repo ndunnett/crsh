@@ -22,7 +22,7 @@ struct Cli {
 
 impl Builtin {
     pub(super) fn cd(shell: &mut Shell, io: &mut io::Context, args: &[&str]) -> ExitCode {
-        let cli = match Cli::try_parse_from(["cd"].iter().chain(args)) {
+        let cli = match Cli::try_parse_from(std::iter::once(&"cd").chain(args)) {
             Ok(cli) => cli,
             Err(e) => {
                 shell.io.eprintln(e.to_string());
@@ -40,7 +40,7 @@ impl Builtin {
             if dir == "-" {
                 shell.old_pwd.clone()
             } else {
-                dir.to_string()
+                dir.clone()
             }
         } else {
             dir::my_home()

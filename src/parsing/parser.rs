@@ -193,15 +193,18 @@ impl<'source> Parser<'source> {
         let left = self.logical_and()?;
 
         if self.advance_if(|t| t == TokenVariant::BarBar) {
-            if let Some(right) = self.logical_and() {
-                Some(Node::Or {
-                    left: Box::new(left),
-                    right: Box::new(right),
-                })
-            } else {
-                self.recover(ParseErrorVariant::UnexpectedTokens, TokenVariant::Newline);
-                None
-            }
+            self.logical_and().map_or_else(
+                || {
+                    self.recover(ParseErrorVariant::UnexpectedTokens, TokenVariant::Newline);
+                    None
+                },
+                |right| {
+                    Some(Node::Or {
+                        left: Box::new(left),
+                        right: Box::new(right),
+                    })
+                },
+            )
         } else {
             Some(left)
         }
@@ -211,15 +214,18 @@ impl<'source> Parser<'source> {
         let left = self.command()?;
 
         if self.advance_if(|t| t == TokenVariant::AmperAmper) {
-            if let Some(right) = self.command() {
-                Some(Node::And {
-                    left: Box::new(left),
-                    right: Box::new(right),
-                })
-            } else {
-                self.recover(ParseErrorVariant::UnexpectedTokens, TokenVariant::Newline);
-                None
-            }
+            self.command().map_or_else(
+                || {
+                    self.recover(ParseErrorVariant::UnexpectedTokens, TokenVariant::Newline);
+                    None
+                },
+                |right| {
+                    Some(Node::And {
+                        left: Box::new(left),
+                        right: Box::new(right),
+                    })
+                },
+            )
         } else {
             Some(left)
         }
@@ -293,13 +299,16 @@ impl<'source> Parser<'source> {
         let span = self.next_if(|t| t == TokenVariant::Blob)?.span.clone();
         let lexeme = self.lexeme(span)?;
 
-        if let Ok(n) = lexeme.parse::<usize>() {
-            Some(Word::Parameter(Parameter::Number(n)))
-        } else if Self::check_name(lexeme) {
-            Some(Word::Parameter(Parameter::String(lexeme)))
-        } else {
-            self.recover(ParseErrorVariant::UnexpectedTokens, TokenVariant::Newline);
-            None
-        }
+        lexeme.parse::<usize>().map_or_else(
+            |_| {
+                if Self::check_name(lexeme) {
+                    Some(Word::Parameter(Parameter::String(lexeme)))
+                } else {
+                    self.recover(ParseErrorVariant::UnexpectedTokens, TokenVariant::Newline);
+                    None
+                }
+            },
+            |n| Some(Word::Parameter(Parameter::Number(n))),
+        )
     }
 }

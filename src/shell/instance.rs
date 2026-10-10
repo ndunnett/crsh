@@ -57,39 +57,43 @@ impl Shell {
 
                 self.set_exit_code(ExitCode::DataErr);
             }
-        };
+        }
 
         self.exit_code
     }
 
-    pub fn stdin(&mut self) -> &mut io::Input {
+    pub const fn stdin(&mut self) -> &mut io::Input {
         &mut self.io.input
     }
 
-    pub fn stdout(&mut self) -> &mut io::Output {
+    pub const fn stdout(&mut self) -> &mut io::Output {
         &mut self.io.output
     }
 
-    pub fn stderr(&mut self) -> &mut io::Output {
+    pub const fn stderr(&mut self) -> &mut io::Output {
         &mut self.io.error
     }
 
-    pub fn should_exit(&self) -> bool {
+    #[must_use]
+    pub const fn should_exit(&self) -> bool {
         self.should_exit
     }
 
-    pub fn exit_code(&self) -> ExitCode {
+    #[must_use]
+    pub const fn exit_code(&self) -> ExitCode {
         self.exit_code
     }
 
-    pub fn set_exit_code(&mut self, code: ExitCode) {
+    pub const fn set_exit_code(&mut self, code: ExitCode) {
         self.exit_code = code;
     }
 
-    pub fn config(&self) -> &Config {
+    #[must_use]
+    pub const fn config(&self) -> &Config {
         &self.config
     }
 
+    #[must_use]
     pub fn pretty_pwd(&self) -> Option<String> {
         let home = dir::my_home();
 

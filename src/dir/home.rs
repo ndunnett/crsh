@@ -8,6 +8,7 @@ pub fn home<S: AsRef<str>>(user: S) -> String {
     )
 }
 
+#[must_use]
 pub fn my_home() -> String {
     format!(
         "{}",

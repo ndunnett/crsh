@@ -28,7 +28,8 @@ impl Context {
         })
     }
 
-    pub fn _null() -> Self {
+    #[must_use]
+    pub const fn _null() -> Self {
         Self {
             input: Input::Null,
             output: Output::Null,

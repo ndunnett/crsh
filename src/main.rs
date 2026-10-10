@@ -61,18 +61,17 @@ impl ShellOption {
     fn display_possible_options() -> String {
         let options = Self::value_variants()
             .iter()
-            .filter_map(|v| v.to_possible_value())
+            .filter_map(clap::ValueEnum::to_possible_value)
             .map(|v| format!("- {}: {}", v.get_name(), v.get_help().unwrap_or_default()));
 
-        ["Settable shell options:".to_string()]
-            .into_iter()
+        std::iter::once("Settable shell options:".to_string())
             .chain(options)
             .collect::<Vec<_>>()
             .join("\n  ")
     }
 }
 
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, Eq)]
 pub enum ShellMode {
     Interactive,
     Read,

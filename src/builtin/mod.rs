@@ -13,6 +13,7 @@ pub enum Builtin {
 }
 
 impl Builtin {
+    #[must_use]
     pub fn get(keyword: &str) -> Option<Self> {
         match keyword {
             "cd" => Some(Self::Cd),

@@ -1,6 +1,6 @@
 use std::ops::Range;
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TokenVariant {
     // simple tokens
     EndOfInput,

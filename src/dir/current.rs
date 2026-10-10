@@ -1,3 +1,4 @@
+#[must_use]
 pub fn current() -> String {
     format!(
         "{}",

@@ -34,13 +34,12 @@ impl From<os_pipe::PipeWriter> for Output {
 }
 
 impl From<Output> for Stdio {
-    fn from(output: Output) -> Stdio {
+    fn from(output: Output) -> Self {
         match output {
-            Output::Null => Stdio::null(),
+            Output::Null => Self::null(),
             Output::Pipe(pipe) => pipe.into(),
             Output::File(file) => file.into(),
-            Output::Stdout(_) => Stdio::inherit(),
-            Output::Stderr(_) => Stdio::inherit(),
+            Output::Stdout(_) | Output::Stderr(_) => Self::inherit(),
         }
     }
 }

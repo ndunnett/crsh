@@ -67,8 +67,6 @@ impl<'source> Parser<'source> {
                 return self.func();
             } else if *t == Token::LeftSquare {
                 return self.text();
-            } else {
-                continue;
             }
         }
 

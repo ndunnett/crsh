@@ -5,8 +5,8 @@ pub enum AppliedStyle {
     Foreground(Color),
     Conditional {
         condition: Condition,
-        style_true: Box<AppliedStyle>,
-        style_false: Box<AppliedStyle>,
+        style_true: Box<Self>,
+        style_false: Box<Self>,
     },
 }
 
@@ -31,7 +31,7 @@ pub enum Style {
         styling: Vec<AppliedStyle>,
     },
     Group {
-        children: Vec<Style>,
+        children: Vec<Self>,
     },
 }
 
