@@ -3,9 +3,7 @@ use std::{env, path::Path};
 use clap::Parser;
 use sysexits::ExitCode;
 
-use lib_os::{dir, io};
-
-use crate::{Shell, builtin::Builtin};
+use crate::{Shell, builtin::Builtin, dir, io};
 
 #[derive(Parser)]
 #[group(multiple = false)]

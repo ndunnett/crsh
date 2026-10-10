@@ -1,6 +1,6 @@
 use std::io::{Read, Write};
 
-use super::{input::Input, output::Output};
+use crate::io::{input::Input, output::Output};
 
 #[derive(Debug)]
 pub struct Context {

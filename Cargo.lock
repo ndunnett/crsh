@@ -184,9 +184,15 @@ dependencies = [
 name = "crsh"
 version = "0.0.1"
 dependencies = [
+ "ansi-width",
+ "ariadne",
  "clap",
- "lib_core",
- "lib_repl",
+ "crossterm",
+ "ctrlc",
+ "derive_more",
+ "homedir",
+ "itertools",
+ "os_pipe",
  "sysexits",
 ]
 
@@ -291,37 +297,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8b4baf93f58d4425749ca49a51c50ebab072c5df6994d08fed93541c331481dc"
 dependencies = [
  "either",
-]
-
-[[package]]
-name = "lib_core"
-version = "0.0.1"
-dependencies = [
- "ariadne",
- "clap",
- "derive_more",
- "lib_os",
- "sysexits",
-]
-
-[[package]]
-name = "lib_os"
-version = "0.0.1"
-dependencies = [
- "homedir",
- "os_pipe",
-]
-
-[[package]]
-name = "lib_repl"
-version = "0.0.1"
-dependencies = [
- "ansi-width",
- "crossterm",
- "ctrlc",
- "itertools",
- "lib_core",
- "sysexits",
 ]
 
 [[package]]

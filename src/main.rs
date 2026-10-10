@@ -1,12 +1,12 @@
-use std::env;
-use std::fs;
-use std::io::{self, IsTerminal, Read};
+use std::{
+    env, fs,
+    io::{self, IsTerminal, Read},
+};
 
 use clap::{Parser, ValueEnum};
 use sysexits::ExitCode;
 
-use lib_core::Shell;
-use lib_repl::Prompt;
+use crsh::{Prompt, Shell};
 
 #[derive(Parser, Debug)]
 #[command(version = env!("VERSION"))]

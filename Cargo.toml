@@ -1,9 +1,6 @@
-[workspace]
-default-members = ["crates/crsh"]
-members = ["crates/*"]
-resolver = "3"
-
-[workspace.package]
+[package]
+name = "crsh"
+description = "Crappy Rust SHell. Basic shell written in Rust, not meant to actually be used or taken seriously."
 version = "0.0.1"
 edition = "2024"
 readme = "README.md"
@@ -11,13 +8,17 @@ license = "MIT"
 homepage = "https://github.com/ndunnett/crsh"
 repository = "https://github.com/ndunnett/crsh"
 
-[workspace.dependencies]
-lib_core = { path = "crates/lib-core" }
-lib_os = { path = "crates/lib-os" }
-lib_repl = { path = "crates/lib-repl" }
-
+[dependencies]
+ansi-width = "0.1.0"
+ariadne = "0.6.0"
 clap = { version = "4.6.7", features = ["derive"] }
-sysexits = "0.10.0"                                 # newer versions remove TryFrom<i32>
+crossterm = "0.29.0"
+ctrlc = "3.5.2"
+derive_more = { version = "2.1.1", features = ["from"] }
+homedir = "0.3.6"
+itertools = "0.15.0"
+os_pipe = "1.2.3"
+sysexits = "0.10.0"                                      # newer versions remove TryFrom<i32>
 
 [profile.dev]
 lto = "off"

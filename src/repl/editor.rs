@@ -2,7 +2,7 @@ use std::io;
 
 use crossterm::event::{self, Event, KeyCode, KeyEventKind, KeyModifiers};
 
-use crate::history::{History, Source};
+use crate::repl::history::{History, Source};
 
 pub enum Signal {
     None,

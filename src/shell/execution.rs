@@ -2,11 +2,10 @@ use std::io::Read;
 
 use sysexits::ExitCode;
 
-use lib_os::{dir, io};
-
 use crate::{
     Result, Shell,
     builtin::Builtin,
+    dir, io,
     parsing::{Command, Node, Parameter, Redirection, Word},
 };
 

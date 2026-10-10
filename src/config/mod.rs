@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use lib_os::dir;
+use crate::dir;
 
 #[derive(Debug)]
 pub struct Config {

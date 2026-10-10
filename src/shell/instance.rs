@@ -5,9 +5,7 @@ use std::{
 
 use sysexits::ExitCode;
 
-use lib_os::{dir, io};
-
-use crate::{config::Config, parsing::Parser};
+use crate::{config::Config, dir, io, parsing::Parser};
 
 #[derive(Debug)]
 pub struct Shell {

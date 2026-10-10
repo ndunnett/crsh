@@ -1,6 +1,7 @@
-use crate::{
-    error::{SourceError, SourceErrorVariant},
-    parsing::{Command, Node, Parameter, ParsingIterator, Scanner, Token, TokenVariant, Word},
+use crate::error::{SourceError, SourceErrorVariant};
+
+use crate::parsing::{
+    Command, Node, Parameter, ParsingIterator, Scanner, Token, TokenVariant, Word,
 };
 
 #[derive(Debug, Clone)]

@@ -1,8 +1,6 @@
 use sysexits::ExitCode;
 
-use lib_os::io;
-
-use crate::Shell;
+use crate::{Shell, io};
 
 mod cd;
 mod exit;

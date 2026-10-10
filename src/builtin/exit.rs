@@ -1,8 +1,6 @@
 use sysexits::ExitCode;
 
-use lib_os::io;
-
-use crate::{Shell, builtin::Builtin};
+use crate::{Shell, builtin::Builtin, io};
 
 impl Builtin {
     pub(super) fn exit(shell: &mut Shell, _io: &mut io::Context, args: &[&str]) -> ExitCode {

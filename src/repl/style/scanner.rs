@@ -1,6 +1,6 @@
 use std::str::Chars;
 
-use lib_core::ParsingIterator;
+use crate::ParsingIterator;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Token {

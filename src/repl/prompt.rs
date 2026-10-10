@@ -8,12 +8,13 @@ use crossterm::{cursor, event, queue, style, terminal};
 use itertools::Itertools;
 use sysexits::ExitCode;
 
-use lib_core::{Result, Shell};
-
 use crate::{
-    editor::{Editor, Signal},
-    history::Source,
-    style::{AppliedStyle, Condition, Function, Style},
+    Result, Shell,
+    repl::{
+        editor::{Editor, Signal},
+        history::Source,
+        style::{AppliedStyle, Condition, Function, Style},
+    },
 };
 
 pub struct Prompt<'a> {
