@@ -2,16 +2,16 @@ set no-exit-message
 set dotenv-load
 set script-interpreter := ["just", "script-runner"]
 
-[private]
-@script-runner +script:
-    PYTHONPATH={{ source_directory() }}/scripts uv run --quiet --no-project --script {{ script }}
-
 [windows]
 set shell := ["powershell.exe", "-NoLogo", "-NoProfile"]
 
 [private]
 @default:
     just --list --list-submodules
+
+[private]
+@script-runner +script:
+    PYTHONPATH={{ source_directory() }}/scripts uv run --quiet --no-project --script {{ script }}
 
 # Format all rust files
 @fmt:
